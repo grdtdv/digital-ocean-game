@@ -190,27 +190,47 @@ def buy_artifact():
         conn.close()
 
 
+# --- API: НАЧИСЛЕНИЕ БАЛЛОВ УЧИТЕЛЯМИ (ОБНОВЛЕНО ДЛЯ МАССОВОГО НАЧИСЛЕНИЯ) ---
 @app.route('/api/give_points', methods=['POST'])
 def give_points():
-    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
-        {'status': 'error'}), 403
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
     data = request.json
-    student_id = data.get('student_id')
+    # Теперь мы ждем СПИСОК id учеников (даже если ученик один, это будет список из одного элемента)
+    student_ids = data.get('student_ids')
     amount = int(data.get('amount'))
+    reason = data.get('reason')
+
+    if not student_ids or len(student_ids) == 0:
+        return jsonify({'status': 'error', 'message': 'Ученики не выбраны'})
+
     conn = get_db()
     cursor = conn.cursor()
+
     try:
-        cursor.execute(
-            'UPDATE student_progress SET current_points = current_points + %s, total_earned = total_earned + %s WHERE user_id = %s',
-            (amount, amount, student_id))
-        conn.commit()
+        # Проходимся циклом по всем выбранным ученикам
+        for student_id in student_ids:
+            # 1. Обновляем баланс
+            cursor.execute('''
+                UPDATE student_progress 
+                SET current_points = current_points + %s, total_earned = total_earned + %s 
+                WHERE user_id = %s
+            ''', (amount, amount, student_id))
+
+            # 2. Пишем в историю
+            cursor.execute('''
+                INSERT INTO transactions (student_id, teacher_id, amount, reason) 
+                VALUES (%s, %s, %s, %s)
+            ''', (student_id, session['user_id'], amount, reason))
+
+        conn.commit()  # Сохраняем все изменения разом
         return jsonify({'status': 'success'})
     except Exception as e:
-        conn.rollback()
+        conn.rollback()  # Если ошибка - отменяем всё
         return jsonify({'status': 'error', 'message': str(e)})
     finally:
         conn.close()
-
 
 # --- НОВЫЕ API ДЛЯ СЕТОВ ---
 @app.route('/api/request_set', methods=['POST'])

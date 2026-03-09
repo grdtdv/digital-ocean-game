@@ -81,7 +81,9 @@ function helpMonster() {
 }
 
 /* --- 4. АДМИНКА (УЧИТЕЛЬ) --- */
-let currentStudentId = null; 
+
+// Теперь храним МАССИВ айдишников
+let currentStudentIds =[]; 
 
 const ballTable = {
     'controlWork': { '5': 100, '4': 75, '3': 50, '2': 0 },
@@ -90,16 +92,55 @@ const ballTable = {
     'additional': 'manual'
 };
 
-function openAddPointsModal(studentId, studentName) {
-    currentStudentId = studentId;
-    document.getElementById('selectedStudentName').textContent = `Ученик: ${studentName}`;
-    document.getElementById('workType').value = 'controlWork';
-    document.getElementById('grade').value = '5';
-    updatePointsPreview(); // Вот она вызывается
+// --- НОВЫЙ КОД: УПРАВЛЕНИЕ ЧЕКБОКСАМИ ---
+
+// Выбрать/Снять всех
+function toggleSelectAll(source) {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = source.checked;
+    });
+    updateBulkButtonState();
+}
+
+// Включение/Отключение общей кнопки
+function updateBulkButtonState() {
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    const bulkBtn = document.getElementById('bulkPointsBtn');
+    if(bulkBtn) {
+        bulkBtn.disabled = checkedBoxes.length === 0;
+    }
+}
+
+// Открыть модалку для МАССОВОГО начисления
+function openBulkPointsModal() {
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    // Собираем все выбранные ID в массив
+    currentStudentIds = Array.from(checkedBoxes).map(cb => cb.value);
+    
+    document.getElementById('selectedStudentName').textContent = `Выбрано учеников: ${currentStudentIds.length}`;
+    resetModalFields();
     openModal('addPointsModal');
 }
 
-// А вот сама функция, которой у тебя не было!
+// Открыть модалку для ОДНОГО ученика (старая функция)
+function openAddPointsModal(studentId, studentName) {
+    // Кладем один ID в массив
+    currentStudentIds = [studentId]; 
+    document.getElementById('selectedStudentName').textContent = `Ученик: ${studentName}`;
+    resetModalFields();
+    openModal('addPointsModal');
+}
+
+// Сброс полей при открытии модалки
+function resetModalFields() {
+    document.getElementById('workType').value = 'controlWork';
+    document.getElementById('grade').value = '5';
+    updatePointsPreview();
+}
+
+// ----------------------------------------
+
 function updatePointsPreview() {
     const workType = document.getElementById('workType').value;
     const grade = document.getElementById('grade').value;
@@ -118,7 +159,7 @@ function updatePointsPreview() {
         }
     }
     
-    if (preview) preview.textContent = `Будет начислено: ${points} баллов`;
+    if (preview) preview.textContent = `Будет начислено: ${points} баллов каждому`;
 }
 
 function confirmAddPoints() {
@@ -132,17 +173,25 @@ function confirmAddPoints() {
         points = ballTable[workType][grade];
     }
 
-    if (currentStudentId === null) { alert("Ошибка: Не выбран ученик!"); return; }
-    if (isNaN(points)) { alert("Ошибка: Некорректное количество баллов!"); return; }
+    if (currentStudentIds.length === 0) { alert("Ошибка: Никто не выбран!"); return; }
+    if (isNaN(points) || points <= 0) { alert("Ошибка: Некорректное количество баллов!"); return; }
 
+    // Отправляем МАССИВ student_ids на сервер
     fetch('/api/give_points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: currentStudentId, amount: points, reason: workType })
+        body: JSON.stringify({ 
+            student_ids: currentStudentIds, // <-- ВНИМАНИЕ: тут теперь массив
+            amount: points, 
+            reason: workType 
+        })
     })
     .then(res => res.json())
     .then(data => {
-        if (data.status === 'success') { alert('Баллы начислены!'); location.reload(); }
+        if (data.status === 'success') { 
+            alert('Баллы успешно начислены!'); 
+            location.reload(); 
+        }
         else { alert('Ошибка: ' + data.message); }
     });
 }

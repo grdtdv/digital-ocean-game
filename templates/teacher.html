@@ -17,38 +17,50 @@
 
             <div class="card mb-24">
                 <div class="card__body">
-                    <h3>what did we have here</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>wtf1</th>
-                                <th>wtf2</th>
-                                <th>wtf3</th>
-                            </tr>
-                        </thead>
-           <tbody>
-    <!-- ВНИМАНИЕ СЮДА: используем слово student -->
-    {% for student in students %}
-    <tr>
-        <!-- И тут тоже student -->
-        <td>{{ student.full_name }}</td>
-        <td>{{ student.current_points }}</td>
-        <td>
-            <!-- И здесь тоже student -->
-            <button class="btn btn--sm btn--primary" 
-                    onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">
-                Начислить
-            </button>
-        </td>
-    </tr>
-    {% else %}
-    <tr>
-        <td colspan="3" style="text-align: center;">Учеников пока нет</td>
-    </tr>
-    {% endfor %}
-</tbody>
-                    </table>
-                </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>Управление классом</h3>
+        <!-- НОВАЯ ОБЩАЯ КНОПКА (изначально отключена) -->
+        <button id="bulkPointsBtn" class="btn btn--primary" onclick="openBulkPointsModal()" disabled>
+            Начислить выбранным
+        </button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <!-- ГЛАВНЫЙ ЧЕКБОКС -->
+                <th style="width: 40px;">
+                    <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" style="transform: scale(1.5); cursor: pointer;">
+                </th>
+                <th>Имя</th>
+                <th>Баллы</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <!-- ЧЕКБОКС ДЛЯ КАЖДОГО УЧЕНИКА -->
+                <td>
+                    <input type="checkbox" class="student-checkbox" value="{{ student.id }}" onclick="updateBulkButtonState()" style="transform: scale(1.5); cursor: pointer;">
+                </td>
+                <td>{{ student.full_name }}</td>
+                <td>{{ student.current_points }}</td>
+                <td>
+                    <button class="btn btn--sm btn--outline" 
+                            onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">
+                        Индивидуально
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align: center;">Учеников пока нет</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
             </div>
 <!-- БЛОК ЗАЯВОК НА СЕТЫ -->
 <div class="card mb-24">
