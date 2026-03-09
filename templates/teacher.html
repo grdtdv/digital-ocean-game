@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>wtf-1</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .page {
+            display: block !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="container">
+            <h1 class="mb-24">wtf0</h1>
+
+            <div class="card mb-24">
+                <div class="card__body">
+                    <h3>what did we have here</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>wtf1</th>
+                                <th>wtf2</th>
+                                <th>wtf3</th>
+                            </tr>
+                        </thead>
+           <tbody>
+    <!-- ВНИМАНИЕ СЮДА: используем слово student -->
+    {% for student in students %}
+    <tr>
+        <!-- И тут тоже student -->
+        <td>{{ student.full_name }}</td>
+        <td>{{ student.current_points }}</td>
+        <td>
+            <!-- И здесь тоже student -->
+            <button class="btn btn--sm btn--primary" 
+                    onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">
+                Начислить
+            </button>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="3" style="text-align: center;">Учеников пока нет</td>
+    </tr>
+    {% endfor %}
+</tbody>
+                    </table>
+                </div>
+            </div>
+<!-- БЛОК ЗАЯВОК НА СЕТЫ -->
+<div class="card mb-24">
+    <div class="card__body">
+        <h3>Заявки на активацию сетов</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ученик</th>
+                    <th>Название сета</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in pending_requests %}
+                <tr>
+                    <td>{{ req.full_name }}</td>
+                    <td>{{ req.set_name }}</td>
+                    <td>
+                        <button class="btn btn--sm btn--primary" onclick="approveSet({{ req.id }})">Одобрить</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: gray;">Нет новых заявок</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+            <a href="/logout" class="btn btn--outline btn--full-width">wtf5</a>
+        </div>
+    </div>
+    <!-- ЭТО ОКНО ДОЛЖНО БЫТЬ В ФАЙЛЕ teacher.html -->
+    <div id="addPointsModal" class="modal">
+        <div class="modal-content">
+            <h2 class="mb-24">Начислить баллы</h2>
+            <div id="selectedStudentName" style="margin-bottom: 15px; font-weight: bold;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Тип работы</label>
+                <select id="workType" class="form-control" onchange="updatePointsPreview()">
+                    <option value="controlWork">Контрольная работа</option>
+                    <option value="independentWork">Самостоятельная работа</option>
+                    <option value="homework">Домашняя работа</option>
+                    <option value="additional">Дополнительная работа</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Оценка</label>
+                <select id="grade" class="form-control" onchange="updatePointsPreview()">
+                    <option value="5">5</option>
+                    <option value="4">4</option>
+                    <option value="3">3</option>
+                    <option value="2">2</option>
+                </select>
+            </div>
+
+            <div id="manualPointsInput" class="form-group hidden">
+                <label class="form-label">Количество баллов</label>
+                <input type="number" class="form-control" id="manualPoints" value="0">
+            </div>
+
+            <div id="pointsPreview" style="margin-bottom: 15px; color: green; font-weight: bold;"></div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn--primary" onclick="confirmAddPoints()">Подтвердить</button>
+                <button class="btn btn--secondary" onclick="closeModal('addPointsModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

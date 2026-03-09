@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Кабинет ученика</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- ГЛАВНАЯ СТРАНИЦА (active по умолчанию) -->
+        <div id="homePage" class="page active">
+            <div class="container">
+                <h1 class="mb-24">Привет, {{ session['username'] }}!</h1>
+
+                <div class="monster-card card">
+                    <div class="card__body">
+                        <h2 class="text-center mb-24">Морской тролль</h2>
+                        <div style="text-align: center; margin-bottom: 20px; font-size: 60px;">👹</div>
+                        <div class="progress-bar">
+                            <div class="progress-bar__fill" style="width: 75%;">75/100</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="balance-card">
+                    <h3>Твой баланс</h3>
+                    <!-- СЮДА FLASK ВСТАВИТ БАЛЛЫ ИЗ БАЗЫ -->
+                    <div style="font-size: 30px; font-weight: bold;">{{ student.current_points }} баллов</div>
+                </div>
+
+                <!-- Меню навигации (работает через JS) -->
+                <div class="nav-menu mt-16">
+                    <button class="btn btn--secondary" onclick="navigateTo('profilePage')">Профиль</button>
+                    <button class="btn btn--secondary" onclick="navigateTo('shopPage')">Магазин</button>
+                    <a href="/logout" class="btn btn--outline">Выход</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПРОФИЛЬ (Скрыт) -->
+        <div id="profilePage" class="page">
+            <div class="container">
+                <h1 class="mb-24">Профиль</h1>
+                <div class="profile-header">
+                    <div style="font-size: 60px;">👦</div>
+                    <h2>{{ session['username'] }}</h2>
+                    <div class="level-badge mt-16">Уровень {{ student.level }}</div>
+                </div>
+                <!-- БЛОК: СЕТЫ АРТЕФАКТОВ -->
+<h3 class="section-title">Сеты артефактов</h3>
+<div class="artifact-grid">
+    {% for s in sets_data %}
+    <!-- Если сет одобрен, делаем его блёклым (opacity: 0.5 и ЧБ). Если собран, но не активирован - золотая рамка -->
+    <div class="artifact-item" style="
+        {% if s.status == 'approved' %}opacity: 0.5; filter: grayscale(100%);{% endif %}
+        border: 2px solid {% if s.is_complete and s.status != 'approved' %}gold{% else %}transparent{% endif %};
+    ">
+        <h4>{{ s.name }}</h4>
+        <p style="font-size: 12px; color: gray;">Прогресс: {{ s.owned }} из {{ s.total }} предметов</p>
+        
+        <div style="margin-top: 15px;">
+            {% if s.status == 'approved' %}
+                <span class="status status--success">Сет использован</span>
+            {% elif s.status == 'pending' %}
+                <span class="status status--warning">Ожидает одобрения учителя...</span>
+            {% elif s.is_complete %}
+                <button class="btn btn--primary btn--full-width" onclick="activateSet('{{ s.name }}')">Активировать сет</button>
+            {% else %}
+                <span class="status status--info">Сет не собран</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<!-- КОНЕЦ БЛОКА -->
+                <h3 class="section-title">Мои артефакты</h3>
+                <div class="artifact-grid">
+                    {% for item in my_inventory %}
+                    <div class="artifact-item" style="border: 2px solid gold;">
+                        <h4>{{ item.name }}</h4>
+                        <p>{{ item.set_name }}</p>
+                    </div>
+                    {% else %}
+                    <p style="color: gray;">Пока пусто...</p>
+                    {% endfor %}
+                </div>
+                <button class="btn btn--secondary btn--full-width mt-16" onclick="navigateTo('homePage')">Назад</button>
+            </div>
+        </div>
+
+        <!-- МАГАЗИН (Скрыт) -->
+        <div id="shopPage" class="page">
+            <div class="container">
+                <h1 class="mb-24">Магазин артефактов</h1>
+                <div class="balance-card">
+                    <h3>Доступно: {{ student.current_points }} баллов</h3>
+                </div>
+                
+                <div class="filter-buttons">
+                    <button class="btn btn--primary" onclick="filterShop('my')">Мой уровень</button>
+                    <button class="btn btn--secondary" onclick="filterShop('all')">Все</button>
+                </div>
+
+                <div class="artifact-grid">
+                    <!-- Цикл JINJA2: Пробегаемся по всем товарам из базы -->
+                    {% for item in artifacts %}
+                    <div class="artifact-item" data-mylevel="{{ 'true' if item.min_level <= student.level else 'false' }}">
+                        <h4 style="margin-bottom: 8px;">{{ item.name }}</h4>
+                        <p style="font-size: 12px; color: gray;">{{ item.set_name }}</p>
+                        <p style="font-size: 12px;">Мин. уровень: {{ item.min_level }}</p>
+                        <div style="font-size: 20px; font-weight: bold; color: #33808d; margin-bottom: 12px;">
+                            {{ item.price }} баллов
+                        </div>
+                        
+                        <!-- Проверяем, куплен ли товар -->
+                        {% if item.id in inventory_ids %}
+                            <button class="btn btn--secondary btn--full-width" disabled>Уже куплено</button>
+                        {% elif student.current_points < item.price %}
+                            <button class="btn btn--secondary btn--full-width" disabled>Не хватает денег</button>
+                        {% else %}
+                            <!-- Кнопка вызывает JS функцию -->
+                            <button class="btn btn--primary btn--full-width" onclick="buyArtifact({{ item.id }})">Купить</button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <button class="btn btn--secondary btn--full-width mt-16" onclick="navigateTo('homePage')">Назад</button>
+            </div>
+        </div>
+
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
