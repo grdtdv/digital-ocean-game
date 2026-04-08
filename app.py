@@ -157,9 +157,17 @@ def teacher_dashboard():
     ''')
     pending_requests = cursor.fetchall()
     # ----------------------
+    # ... тут был код со списком учеников ...
+
+    # ЗАГРУЖАЕМ СОБЫТИЯ ИЗ БАЗЫ
+    cursor.execute('SELECT * FROM grading_events')
+    grading_events = cursor.fetchall()
 
     conn.close()
-    return render_template('teacher.html', students=students, pending_requests=pending_requests)
+
+    # Не забудь добавить grading_events=grading_events в return!
+    return render_template('teacher.html', students=students, pending_requests=pending_requests,
+                           grading_events=grading_events)
 
 
 # --- API ---
@@ -373,6 +381,52 @@ def levelup_class():
         return jsonify({'status': 'success'})
     except Exception as e:
         conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+# --- API: НАСТРОЙКИ СОБЫТИЙ (ДОБАВИТЬ/УДАЛИТЬ) ---
+@app.route('/api/add_event', methods=['POST'])
+def add_event():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    data = request.json
+    name = data.get('name')
+    # Переводим в числа, если пусто - ставим 0
+    v5, v4, v3, v2 = int(data.get('v5', 0)), int(data.get('v4', 0)), int(data.get('v3', 0)), int(
+        data.get('v2', 0))
+
+    if not name: return jsonify({'status': 'error', 'message': 'Название не может быть пустым'})
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            'INSERT INTO grading_events (name, val_5, val_4, val_3, val_2) VALUES (%s, %s, %s, %s, %s)',
+            (name, v5, v4, v3, v2))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/delete_event', methods=['POST'])
+def delete_event():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    event_id = request.json.get('event_id')
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('DELETE FROM grading_events WHERE id = %s', (event_id,))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
     finally:
         conn.close()

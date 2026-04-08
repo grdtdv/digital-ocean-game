@@ -104,12 +104,6 @@ function activateSet(setName) {
    ========================================== */
 let currentStudentIds =[]; 
 
-const ballTable = {
-    'controlWork': { '5': 100, '4': 75, '3': 50, '2': 0 },
-    'independentWork': { '5': 50, '4': 40, '3': 25, '2': 0 },
-    'homework': { '5': 10, '4': 7, '3': 5, '2': 0 },
-    'additional': 'manual'
-};
 
 function toggleSelectAll(source) {
     const checkboxes = document.querySelectorAll('.student-checkbox');
@@ -138,53 +132,86 @@ function openAddPointsModal(studentId, studentName) {
     openModal('addPointsModal');
 }
 
+// --- 1. ИСПРАВЛЕННЫЙ СБРОС ПОЛЕЙ ---
+// --- ОБНОВЛЕННЫЕ ФУНКЦИИ НАЧИСЛЕНИЯ БАЛЛОВ (БЕЗ ОЦЕНОК) ---
+
 function resetModalFields() {
-    document.getElementById('workType').value = 'controlWork';
-    document.getElementById('grade').value = '5';
+    const workSelect = document.getElementById('workType');
+    if (workSelect && workSelect.options.length > 0) {
+        workSelect.selectedIndex = 0; 
+    }
+    
+    document.getElementById('manualPoints').value = ''; // Очищаем поле ввода
     updatePointsPreview();
 }
 
 function updatePointsPreview() {
-    const workType = document.getElementById('workType').value;
-    const grade = document.getElementById('grade').value;
-    const manualInput = document.getElementById('manualPointsInput');
+    // Просто берем число из поля ввода
+    const points = parseInt(document.getElementById('manualPoints').value) || 0;
     const preview = document.getElementById('pointsPreview');
     
-    let points = 0;
-    if (workType === 'additional') {
-        if (manualInput) manualInput.classList.remove('hidden');
-        points = document.getElementById('manualPoints') ? document.getElementById('manualPoints').value : 0;
-    } else {
-        if (manualInput) manualInput.classList.add('hidden');
-        if (ballTable[workType] && ballTable[workType][grade] !== undefined) {
-            points = ballTable[workType][grade];
-        }
-    }
     if (preview) preview.textContent = `Будет начислено: ${points} баллов каждому`;
 }
 
 function confirmAddPoints() {
-    const workType = document.getElementById('workType').value;
-    let points = 0;
-    if (workType === 'additional') {
-        points = parseInt(document.getElementById('manualPoints').value);
-    } else {
-        const grade = document.getElementById('grade').value;
-        points = ballTable[workType][grade];
+    const workSelect = document.getElementById('workType');
+    
+    if (!workSelect || workSelect.options.length === 0) {
+        alert("Ошибка: Нет доступных типов событий. Создайте их в Настройках.");
+        return;
     }
 
+    const reason = workSelect.value; // Берем название прямо из select
+    const points = parseInt(document.getElementById('manualPoints').value);
+
     if (currentStudentIds.length === 0) { alert("Ошибка: Никто не выбран!"); return; }
-    if (isNaN(points) || points <= 0) { alert("Ошибка: Некорректное количество баллов!"); return; }
+    if (isNaN(points) || points <= 0) { alert("Ошибка: Введите число баллов больше нуля!"); return; }
 
     fetch('/api/give_points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_ids: currentStudentIds, amount: points, reason: workType })
+        body: JSON.stringify({ student_ids: currentStudentIds, amount: points, reason: reason })
     })
     .then(res => res.json())
     .then(data => {
-        if (data.status === 'success') { alert('Баллы успешно начислены!'); location.reload(); }
+        if (data.status === 'success') { alert('Баллы начислены!'); location.reload(); }
         else { alert('Ошибка: ' + data.message); }
+    });
+}
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ НАСТРОЕК (УПРОЩЕННЫЕ) ---
+function openSettingsModal() {
+    openModal('settingsModal');
+}
+
+function addEvent() {
+    const name = document.getElementById('newEventName').value;
+    if (!name) { alert("Введите название!"); return; }
+
+    // Отправляем нули вместо оценок, чтобы бэкенд не ругался (мы их больше не используем)
+    const data = {
+        name: name,
+        v5: 0, v4: 0, v3: 0, v2: 0 
+    };
+
+    fetch('/api/add_event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(res => res.json()).then(res => {
+        if(res.status === 'success') location.reload();
+        else alert("Ошибка: " + res.message);
+    });
+}
+function deleteEvent(id) {
+    if(!confirm("Удалить это событие навсегда?")) return;
+    fetch('/api/delete_event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: id })
+    }).then(res => res.json()).then(res => {
+        if(res.status === 'success') location.reload();
+        else alert("Ошибка: " + res.message);
     });
 }
 

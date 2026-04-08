@@ -24,6 +24,10 @@
             <button class="btn" style="background-color: #c0152f; color: white;" onclick="openMonsterAttackModal()">
                 Атака монстра 👹
             </button>
+            <!-- НОВАЯ КНОПКА НАСТРОЕК -->
+            <button class="btn btn--secondary" onclick="openSettingsModal()">
+                ⚙️ Настройки баллов
+            </button>
         </div>
     </div>
 </div>
@@ -108,37 +112,29 @@
         </div>
     </div>
     <!-- ЭТО ОКНО ДОЛЖНО БЫТЬ В ФАЙЛЕ teacher.html -->
-    <div id="addPointsModal" class="modal">
+     <div id="addPointsModal" class="modal">
         <div class="modal-content">
             <h2 class="mb-24">Начислить баллы</h2>
             <div id="selectedStudentName" style="margin-bottom: 15px; font-weight: bold;"></div>
             
             <div class="form-group">
-                <label class="form-label">Тип работы</label>
-                <select id="workType" class="form-control" onchange="updatePointsPreview()">
-                    <option value="controlWork">Контрольная работа</option>
-                    <option value="independentWork">Самостоятельная работа</option>
-                    <option value="homework">Домашняя работа</option>
-                    <option value="additional">Дополнительная работа</option>
+                <label class="form-label">Событие (за что начисляем?)</label>
+                <select id="workType" class="form-control">
+                    {% for ev in grading_events %}
+                    <!-- Теперь в value мы храним просто название события -->
+                    <option value="{{ ev.name }}">{{ ev.name }}</option>
+                    {% endfor %}
+                    <option value="Ручной ввод">Ручной ввод (другое)</option>
                 </select>
             </div>
 
+            <!-- Поле ввода баллов теперь всегда видимо -->
             <div class="form-group">
-                <label class="form-label">Оценка</label>
-                <select id="grade" class="form-control" onchange="updatePointsPreview()">
-                    <option value="5">5</option>
-                    <option value="4">4</option>
-                    <option value="3">3</option>
-                    <option value="2">2</option>
-                </select>
-            </div>
-
-            <div id="manualPointsInput" class="form-group hidden">
                 <label class="form-label">Количество баллов</label>
-                <input type="number" class="form-control" id="manualPoints" value="0">
+                <input type="number" class="form-control" id="manualPoints" value="0" min="1" oninput="updatePointsPreview()">
             </div>
 
-            <div id="pointsPreview" style="margin-bottom: 15px; color: green; font-weight: bold;"></div>
+            <div id="pointsPreview" style="margin-bottom: 15px; color: green; font-weight: bold;">Будет начислено: 0 баллов</div>
 
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn--primary" onclick="confirmAddPoints()">Подтвердить</button>
@@ -146,6 +142,7 @@
             </div>
         </div>
     </div>
+
     <!-- === НОВОЕ ОКНО: АТАКА МОНСТРА === -->
     <div id="monsterAttackModal" class="modal">
         <div class="modal-content">
@@ -175,6 +172,38 @@
             </div>
         </div>
     </div>
-<script src="{{ url_for('static', filename='js/main.js') }}?v=3"></script>
+    <!-- Окно настроек событий -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 class="mb-24">Настройки событий</h2>
+            <p style="color: gray; margin-bottom: 15px;">Создайте список частых событий, чтобы не вводить их названия вручную каждый раз.</p>
+            
+            <div class="table-container">
+                <table style="margin-bottom: 20px;">
+                    <tr>
+                        <th>Название события</th>
+                        <th style="width: 100px;">Действие</th>
+                    </tr>
+                    {% for ev in grading_events %}
+                    <tr>
+                        <td>{{ ev.name }}</td>
+                        <td><button class="btn btn--sm btn--outline" onclick="deleteEvent({{ ev.id }})">Удалить</button></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            
+            <h3 style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">Добавить новое событие</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="newEventName" placeholder="Название (напр., Олимпиада)" class="form-control" style="flex: 1;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn--primary" onclick="addEvent()">Добавить</button>
+                <button class="btn btn--secondary" onclick="closeModal('settingsModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=6"></script>
 </body>
 </html>
