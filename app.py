@@ -232,6 +232,7 @@ def give_points():
     finally:
         conn.close()
 
+
 # --- НОВЫЕ API ДЛЯ СЕТОВ ---
 @app.route('/api/request_set', methods=['POST'])
 def request_set():
@@ -263,6 +264,51 @@ def approve_set():
         conn.commit()
         return jsonify({'status': 'success'})
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+# --- API: АТАКА МОНСТРА (СПИСАНИЕ У ВСЕГО КЛАССА) ---
+@app.route('/api/monster_attack', methods=['POST'])
+def monster_attack():
+    # Проверка прав (только учитель)
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    amount = int(request.json.get('amount', 0))
+    if amount <= 0:
+        return jsonify({'status': 'error', 'message': 'Некорректный урон'})
+
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # 1. Находим всех учеников
+        cursor.execute('SELECT id FROM users WHERE role = "student"')
+        students = cursor.fetchall()
+
+        # 2. Проходимся по каждому и списываем баллы
+        for st in students:
+            student_id = st['id']
+
+            # Списываем баллы (GREATEST не дает уйти в минус)
+            cursor.execute('''
+                UPDATE student_progress 
+                SET current_points = GREATEST(0, current_points - %s) 
+                WHERE user_id = %s
+            ''', (amount, student_id))
+
+            # Записываем событие в историю
+            cursor.execute('''
+                INSERT INTO transactions (student_id, teacher_id, amount, reason) 
+                VALUES (%s, %s, %s, %s)
+            ''', (student_id, session['user_id'], -amount, "Атака монстра"))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)})
     finally:
         conn.close()

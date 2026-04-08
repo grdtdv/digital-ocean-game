@@ -1,4 +1,6 @@
-/* --- 1. ОБЩИЕ ФУНКЦИИ (UI) --- */
+/* ==========================================
+   1. ОБЩИЕ ФУНКЦИИ (UI)
+   ========================================== */
 function navigateTo(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const target = document.getElementById(pageId);
@@ -15,11 +17,12 @@ function closeModal(modalId) {
     if (modal) modal.classList.remove('active');
 }
 
-/* --- 2. ВХОД --- */
+/* ==========================================
+   2. ВХОД
+   ========================================== */
 function toggleUserType(type) {
     const btns = document.querySelectorAll('.toggle-switch .btn');
     btns.forEach(b => b.classList.remove('active'));
-    
     const activeBtn = Array.from(btns).find(b => b.textContent.toLowerCase().includes(type === 'student' ? 'ученик' : 'учитель'));
     if(activeBtn) activeBtn.classList.add('active');
 
@@ -40,7 +43,9 @@ function selectGender(gender) {
     document.getElementById('genderInput').value = gender;
 }
 
-/* --- 3. МАГАЗИН И МОНСТРЫ (УЧЕНИК) --- */
+/* ==========================================
+   3. УЧЕНИК (МАГАЗИН, СЕТЫ, МОНСТРЫ)
+   ========================================== */
 function filterShop(type) {
     const btns = document.querySelectorAll('.filter-buttons .btn');
     btns.forEach(btn => {
@@ -80,9 +85,23 @@ function helpMonster() {
     });
 }
 
-/* --- 4. АДМИНКА (УЧИТЕЛЬ) --- */
+function activateSet(setName) {
+    if(!confirm(`Активировать "${setName}"? Учителю будет отправлен запрос.`)) return;
+    fetch('/api/request_set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ set_name: setName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') { alert('Заявка отправлена учителю!'); location.reload(); } 
+        else { alert('Ошибка: ' + data.message); }
+    });
+}
 
-// Теперь храним МАССИВ айдишников
+/* ==========================================
+   4. УЧИТЕЛЬ (НАЧИСЛЕНИЕ БАЛЛОВ И СЕТЫ)
+   ========================================== */
 let currentStudentIds =[]; 
 
 const ballTable = {
@@ -92,54 +111,38 @@ const ballTable = {
     'additional': 'manual'
 };
 
-// --- НОВЫЙ КОД: УПРАВЛЕНИЕ ЧЕКБОКСАМИ ---
-
-// Выбрать/Снять всех
 function toggleSelectAll(source) {
     const checkboxes = document.querySelectorAll('.student-checkbox');
-    checkboxes.forEach(cb => {
-        cb.checked = source.checked;
-    });
+    checkboxes.forEach(cb => { cb.checked = source.checked; });
     updateBulkButtonState();
 }
 
-// Включение/Отключение общей кнопки
 function updateBulkButtonState() {
     const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
     const bulkBtn = document.getElementById('bulkPointsBtn');
-    if(bulkBtn) {
-        bulkBtn.disabled = checkedBoxes.length === 0;
-    }
+    if(bulkBtn) bulkBtn.disabled = checkedBoxes.length === 0;
 }
 
-// Открыть модалку для МАССОВОГО начисления
 function openBulkPointsModal() {
     const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
-    // Собираем все выбранные ID в массив
     currentStudentIds = Array.from(checkedBoxes).map(cb => cb.value);
-    
     document.getElementById('selectedStudentName').textContent = `Выбрано учеников: ${currentStudentIds.length}`;
     resetModalFields();
     openModal('addPointsModal');
 }
 
-// Открыть модалку для ОДНОГО ученика (старая функция)
 function openAddPointsModal(studentId, studentName) {
-    // Кладем один ID в массив
     currentStudentIds = [studentId]; 
     document.getElementById('selectedStudentName').textContent = `Ученик: ${studentName}`;
     resetModalFields();
     openModal('addPointsModal');
 }
 
-// Сброс полей при открытии модалки
 function resetModalFields() {
     document.getElementById('workType').value = 'controlWork';
     document.getElementById('grade').value = '5';
     updatePointsPreview();
 }
-
-// ----------------------------------------
 
 function updatePointsPreview() {
     const workType = document.getElementById('workType').value;
@@ -148,7 +151,6 @@ function updatePointsPreview() {
     const preview = document.getElementById('pointsPreview');
     
     let points = 0;
-
     if (workType === 'additional') {
         if (manualInput) manualInput.classList.remove('hidden');
         points = document.getElementById('manualPoints') ? document.getElementById('manualPoints').value : 0;
@@ -158,14 +160,12 @@ function updatePointsPreview() {
             points = ballTable[workType][grade];
         }
     }
-    
     if (preview) preview.textContent = `Будет начислено: ${points} баллов каждому`;
 }
 
 function confirmAddPoints() {
     const workType = document.getElementById('workType').value;
     let points = 0;
-    
     if (workType === 'additional') {
         points = parseInt(document.getElementById('manualPoints').value);
     } else {
@@ -176,49 +176,18 @@ function confirmAddPoints() {
     if (currentStudentIds.length === 0) { alert("Ошибка: Никто не выбран!"); return; }
     if (isNaN(points) || points <= 0) { alert("Ошибка: Некорректное количество баллов!"); return; }
 
-    // Отправляем МАССИВ student_ids на сервер
     fetch('/api/give_points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            student_ids: currentStudentIds, // <-- ВНИМАНИЕ: тут теперь массив
-            amount: points, 
-            reason: workType 
-        })
+        body: JSON.stringify({ student_ids: currentStudentIds, amount: points, reason: workType })
     })
     .then(res => res.json())
     .then(data => {
-        if (data.status === 'success') { 
-            alert('Баллы успешно начислены!'); 
-            location.reload(); 
-        }
+        if (data.status === 'success') { alert('Баллы успешно начислены!'); location.reload(); }
         else { alert('Ошибка: ' + data.message); }
     });
 }
 
-/* --- ФУНКЦИИ ДЛЯ СЕТОВ АРТЕФАКТОВ --- */
-
-// Ученик: Отправка заявки на активацию
-function activateSet(setName) {
-    if(!confirm(`Активировать "${setName}"? Учителю будет отправлен запрос.`)) return;
-    
-    fetch('/api/request_set', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ set_name: setName })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 'success') { 
-            alert('Заявка отправлена учителю!'); 
-            location.reload(); 
-        } else { 
-            alert('Ошибка: ' + data.message); 
-        }
-    });
-}
-
-// Учитель: Одобрение заявки
 function approveSet(requestId) {
     fetch('/api/approve_set', {
         method: 'POST',
@@ -227,11 +196,58 @@ function approveSet(requestId) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.status === 'success') { 
-            alert('Сет успешно активирован!'); 
+        if (data.status === 'success') { alert('Сет успешно активирован!'); location.reload(); } 
+        else { alert('Ошибка: ' + data.message); }
+    });
+}
+
+/* ==========================================
+   5. УЧИТЕЛЬ (УПРАВЛЕНИЕ КЛАССОМ И МОНСТРАМИ)
+   ========================================== */
+
+function openMonsterAttackModal() {
+    const attackInput = document.getElementById('attackDamage');
+    if (attackInput) attackInput.value = '10'; 
+    openModal('monsterAttackModal');
+}
+
+function confirmMonsterAttack() {
+    const damage = parseInt(document.getElementById('attackDamage').value);
+    
+    if (isNaN(damage) || damage <= 0) {
+        alert("Введите корректное число баллов урона!");
+        return;
+    }
+
+    if (!confirm(`Монстр спишет ${damage} баллов у ВСЕХ учеников. Вы уверены?`)) {
+        return;
+    }
+
+    fetch('/api/monster_attack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: damage })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(`Монстр атаковал! У всего класса списано по ${damage} баллов.`);
             location.reload(); 
-        } else { 
-            alert('Ошибка: ' + data.message); 
+        } else {
+            alert('Ошибка сервера: ' + data.message);
         }
     });
+}
+
+// Заглушки для кнопок, API к которым мы напишем на следующей неделе по плану
+function openCompleteMonsterModal() {
+    if (confirm("Вы действительно хотите завершить уровень текущего монстра? (Логика перехода к новому монстру будет добавлена на следующей неделе)")) {
+        console.log("Модалка или API завершения уровня");
+    }
+}
+
+function levelUpClass() {
+    if (confirm("Вы действительно хотите перевести весь класс на новый уровень? (Логика будет добавлена позже)")) {
+        console.log("API повышения уровня класса");
+    }
 }

@@ -14,7 +14,19 @@
     <div class="app-container">
         <div class="container">
             <h1 class="mb-24">wtf0</h1>
-
+            <div class="card mb-24">
+    <div class="card__body">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn--primary" onclick="openCompleteMonsterModal()">Завершить уровень монстра</button>
+            <button class="btn btn--primary" onclick="levelUpClass()">Перевести класс на новый уровень</button>
+            
+            <!-- НОВАЯ КНОПКА АТАКИ -->
+            <button class="btn" style="background-color: #c0152f; color: white;" onclick="openMonsterAttackModal()">
+                Атака монстра 👹
+            </button>
+        </div>
+    </div>
+</div>
             <div class="card mb-24">
                 <div class="card__body">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -134,6 +146,23 @@
             </div>
         </div>
     </div>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- === НОВОЕ ОКНО: АТАКА МОНСТРА === -->
+    <div id="monsterAttackModal" class="modal">
+        <div class="modal-content">
+            <h2 class="mb-24" style="color: #c0152f;">Внимание: Атака монстра!</h2>
+            <p>Монстр нанесет урон <strong>всему классу</strong> одновременно. Баллы будут списаны у всех учеников.</p>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label class="form-label">Сколько баллов потеряет каждый ученик?</label>
+                <input type="number" id="attackDamage" class="form-control" min="1" value="10">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" style="background-color: #c0152f; color: white;" onclick="confirmMonsterAttack()">Атаковать!</button>
+                <button class="btn btn--secondary" onclick="closeModal('monsterAttackModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=2"></script>
 </body>
 </html>
