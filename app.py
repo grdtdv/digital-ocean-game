@@ -72,7 +72,10 @@ def student_dashboard():
     cursor.execute('SELECT * FROM student_progress WHERE user_id = %s', (session['user_id'],))
     student_data = cursor.fetchone()
 
-    monster = {'name': 'Морской тролль', 'current_hp': 75, 'max_hp': 100}
+    cursor.execute('SELECT * FROM monsters WHERE is_active = TRUE LIMIT 1')
+    monster = cursor.fetchone()
+    if not monster:  # На случай, если в базе пусто
+        monster = {'name': 'Нет монстра', 'current_hp': 0, 'max_hp': 100, 'quarter': 0}
 
     cursor.execute('SELECT * FROM artifacts')
     artifacts = cursor.fetchall()
@@ -305,6 +308,67 @@ def monster_attack():
                 VALUES (%s, %s, %s, %s)
             ''', (student_id, session['user_id'], -amount, "Атака монстра"))
 
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+# --- API: ПЕРЕКЛЮЧЕНИЕ МОНСТРА НА СЛЕДУЮЩЕГО ---
+@app.route('/api/complete_monster', methods=['POST'])
+def complete_monster():
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Находим текущего монстра
+        cursor.execute('SELECT id, quarter FROM monsters WHERE is_active = TRUE LIMIT 1')
+        active_monster = cursor.fetchone()
+
+        if active_monster:
+            # Отключаем текущего
+            cursor.execute('UPDATE monsters SET is_active = FALSE WHERE id = %s',
+                           (active_monster['id'],))
+            # Ищем следующего (по четверти)
+            cursor.execute('SELECT id FROM monsters WHERE quarter > %s ORDER BY quarter ASC LIMIT 1',
+                           (active_monster['quarter'],))
+            next_monster = cursor.fetchone()
+
+            if next_monster:
+                # Включаем следующего
+                cursor.execute('UPDATE monsters SET is_active = TRUE WHERE id = %s',
+                               (next_monster['id'],))
+            else:
+                return jsonify({'status': 'error', 'message': 'Это был последний монстр в году!'})
+        else:
+            # Если активных нет, включаем самого первого
+            cursor.execute('UPDATE monsters SET is_active = TRUE ORDER BY quarter ASC LIMIT 1')
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+# --- API: ПЕРЕВОД КЛАССА НА НОВЫЙ УРОВЕНЬ ---
+@app.route('/api/levelup_class', methods=['POST'])
+def levelup_class():
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Повышаем уровень всем ученикам (но не больше 7 уровня, как по ТЗ)
+        cursor.execute('UPDATE student_progress SET level = level + 1 WHERE level < 7')
         conn.commit()
         return jsonify({'status': 'success'})
     except Exception as e:

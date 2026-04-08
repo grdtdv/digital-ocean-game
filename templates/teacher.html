@@ -163,6 +163,18 @@
             </div>
         </div>
     </div>
-<script src="{{ url_for('static', filename='js/main.js') }}?v=2"></script>
+    <!-- Окно: Завершить уровень монстра -->
+    <div id="completeMonsterModal" class="modal">
+        <div class="modal-content">
+            <h2 class="mb-24">Победа над монстром!</h2>
+            <p>Текущий монстр будет повержен, и класс перейдет к сражению с монстром следующей четверти.</p>
+            <p style="color: #c0152f; font-weight: bold;">Вы уверены?</p>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn--primary" onclick="completeMonster()">Да, завершить</button>
+                <button class="btn btn--secondary" onclick="closeModal('completeMonsterModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=3"></script>
 </body>
 </html>

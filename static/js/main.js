@@ -239,15 +239,45 @@ function confirmMonsterAttack() {
     });
 }
 
-// Заглушки для кнопок, API к которым мы напишем на следующей неделе по плану
+
+// --- ЗАВЕРШИТЬ УРОВЕНЬ МОНСТРА ---
 function openCompleteMonsterModal() {
-    if (confirm("Вы действительно хотите завершить уровень текущего монстра? (Логика перехода к новому монстру будет добавлена на следующей неделе)")) {
-        console.log("Модалка или API завершения уровня");
-    }
+    openModal('completeMonsterModal');
 }
 
+function completeMonster() {
+    fetch('/api/complete_monster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Уровень завершен! Переходим к следующему монстру.');
+            location.reload(); 
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    });
+}
+
+// --- ПЕРЕВЕСТИ КЛАСС НА НОВЫЙ УРОВЕНЬ ---
 function levelUpClass() {
-    if (confirm("Вы действительно хотите перевести весь класс на новый уровень? (Логика будет добавлена позже)")) {
-        console.log("API повышения уровня класса");
+    if (!confirm("Вы действительно хотите перевести весь класс на новый уровень? У всех учеников уровень повысится на +1.")) {
+        return;
     }
+
+    fetch('/api/levelup_class', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Класс успешно переведен на следующий уровень!');
+            location.reload(); 
+        } else {
+            alert('Ошибка сервера: ' + data.message);
+        }
+    });
 }

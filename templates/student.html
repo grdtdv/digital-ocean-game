@@ -15,14 +15,24 @@
 
                 <div class="monster-card card">
                     <div class="card__body">
-                        <h2 class="text-center mb-24">Морской тролль</h2>
+                        <!-- Теперь имя берется из базы данных! -->
+                        <h2 class="text-center mb-24">{{ monster.name }}</h2>
+                        
                         <div style="text-align: center; margin-bottom: 20px; font-size: 60px;">👹</div>
+                        
+                        <!-- Четверть монстра -->
+                        <div style="text-align: center; margin-bottom: 10px;">
+                            <span class="level-badge">Четверть {{ monster.quarter }}</span>
+                        </div>
+
                         <div class="progress-bar">
-                            <div class="progress-bar__fill" style="width: 75%;">75/100</div>
+                            <!-- Здоровье тоже высчитывается из базы -->
+                            <div class="progress-bar__fill" style="width: {{ (monster.current_hp / monster.max_hp) * 100 }}%;">
+                                {{ monster.current_hp }}/{{ monster.max_hp }}
+                            </div>
                         </div>
                     </div>
                 </div>
-
                 <div class="balance-card">
                     <h3>Твой баланс</h3>
                     <!-- СЮДА FLASK ВСТАВИТ БАЛЛЫ ИЗ БАЗЫ -->
