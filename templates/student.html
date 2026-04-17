@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Кабинет ученика</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11">
 </head>
 <body>
     <div class="app-container">
@@ -63,36 +63,52 @@
         </div>
 
         <!-- ПРОФИЛЬ УЧЕНИКА -->
+        <!-- ПРОФИЛЬ УЧЕНИКА -->
         <div id="profilePage" class="page">
-            <div class="underwater-stage" style="padding-top: 40px;">
+            
+            <!-- Декоративные пузыри на заднем фоне -->
+            <img src="{{ url_for('static', filename='img/bubble.png') }}" class="bg-bubble" style="width: 80px; top: 15%; left: 10%; animation-duration: 5s; opacity: 0.5;">
+            <img src="{{ url_for('static', filename='img/bubble.png') }}" class="bg-bubble" style="width: 120px; top: 40%; right: 5%; animation-duration: 7s; opacity: 0.4;">
+            <img src="{{ url_for('static', filename='img/bubble.png') }}" class="bg-bubble" style="width: 60px; bottom: 20%; left: 20%; animation-duration: 4s; opacity: 0.6;">
+
+            <div class="underwater-stage" style="padding-top: 40px; position: relative; z-index: 1;">
                 <div class="container">
                     
-                    <!-- Стеклянная карточка профиля -->
-                    <div class="glass-card profile-header">
-                        <div style="font-size: 80px; margin-bottom: 10px;">{% if student.avatar_type == 'girl' %}👧{% else %}👦{% endif %}</div>
-                        <h1 style="color: white; text-shadow: 2px 2px 4px #000;">{{ session['username'] }}</h1>
-                        <div class="level-badge mt-16" style="background: #e68161; border: 2px solid #fff; font-size: 20px;">Уровень {{ student.level }}</div>
-                        <button class="btn btn--secondary mt-16" style="background: white; color: black;" onclick="navigateTo('homePage')">Вернуться на базу</button>
+                    <!-- Стеклянная карточка: ШАПКА ПРОФИЛЯ -->
+                    <div class="glass-card profile-header" style="text-align: center; border: 2px solid rgba(255,255,255,0.4);">
+                        
+                        <!-- Аватарка внутри парящего мыльного пузыря -->
+                        <div style="position: relative; width: 160px; height: 160px; margin: 0 auto 15px auto; animation: float-boss 4s ease-in-out infinite;">
+                            <img src="{{ url_for('static', filename='img/bubble.png') }}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.3));">
+                            <div style="font-size: 80px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;">
+                                {% if student.avatar_type == 'girl' %}👧{% else %}👦{% endif %}
+                            </div>
+                        </div>
+                        
+                        <h1 style="color: white; text-shadow: 2px 2px 4px #000; font-size: 36px; margin-bottom: 10px;">{{ session['username'] }}</h1>
+                        <div class="level-badge" style="background: #ff7e67; border: 3px solid #fff; font-size: 22px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">Уровень {{ student.level }}</div>
+                        <br>
+                        <button class="btn btn--secondary mt-16" style="background: white; color: #2c8c7c; font-weight: bold; border-radius: 20px; padding: 10px 30px; box-shadow: 0 5px 10px rgba(0,0,0,0.2);" onclick="navigateTo('homePage')">Вернуться на базу</button>
                     </div>
 
                     <!-- БЛОК: СЕТЫ АРТЕФАКТОВ -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="color: #fff; border-bottom-color: rgba(255,255,255,0.3);">Сеты артефактов</h3>
+                        <h3 class="section-title" style="color: #fff; border-bottom: 2px dashed rgba(255,255,255,0.3); padding-bottom: 10px; text-align: center; font-family: 'Comic Sans MS', cursive, sans-serif;">Сеты артефактов</h3>
                         <div class="artifact-grid">
                             {% for s in sets_data %}
-                            <div class="artifact-item" style="background: rgba(0,0,0,0.4); border: 2px solid {% if s.is_complete and s.status != 'approved' %}gold{% else %}transparent{% endif %}; {% if s.status == 'approved' %}opacity: 0.5; filter: grayscale(100%);{% endif %}">
-                                <h4 style="color: white;">{{ s.name }}</h4>
-                                <p style="font-size: 12px; color: #a3d9cf;">Прогресс: {{ s.owned }} из {{ s.total }} предметов</p>
+                            <div class="artifact-item" style="border: 4px solid {% if s.is_complete and s.status != 'approved' %}gold{% else %}rgba(255,255,255,0.1){% endif %}; {% if s.status == 'approved' %}opacity: 0.6; filter: grayscale(80%);{% endif %}">
+                                <h4 style="color: white; font-size: 18px; margin-bottom: 10px; text-shadow: 1px 1px 3px #000;">{{ s.name }}</h4>
+                                <p style="font-size: 14px; color: #a3d9cf; margin-bottom: 15px;">Прогресс: <b style="color: white;">{{ s.owned }} / {{ s.total }}</b></p>
                                 
-                                <div style="margin-top: 15px;">
+                                <div style="width: 100%;">
                                     {% if s.status == 'approved' %}
-                                        <span class="status status--success">Сет использован</span>
+                                        <div class="status" style="width: 100%; text-align: center; background: rgba(255,255,255,0.2); color: #fff;">Использован</div>
                                     {% elif s.status == 'pending' %}
-                                        <span class="status status--warning" style="background: #f59e0b; color: white;">Ожидает учителя...</span>
+                                        <div class="status" style="width: 100%; text-align: center; background: #f59e0b; color: white;">Ожидает учителя...</div>
                                     {% elif s.is_complete %}
-                                        <button class="btn btn--primary btn--full-width" style="background: gold; color: black;" onclick="activateSet('{{ s.name }}')">Активировать сет</button>
+                                        <button class="btn btn--full-width" style="background: gold; color: black; border: 2px solid #fff; font-weight: bold; border-radius: 15px; padding: 10px;" onclick="activateSet('{{ s.name }}')">Активировать</button>
                                     {% else %}
-                                        <span class="status status--info" style="background: rgba(255,255,255,0.2); color: white;">Сет не собран</span>
+                                        <div class="status" style="width: 100%; text-align: center; background: rgba(0,0,0,0.3); color: #ccc;">Не собран</div>
                                     {% endif %}
                                 </div>
                             </div>
@@ -102,16 +118,16 @@
 
                     <!-- БЛОК: МОИ АРТЕФАКТЫ -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="color: #fff; border-bottom-color: rgba(255,255,255,0.3);">Мои артефакты</h3>
+                        <h3 class="section-title" style="color: #fff; border-bottom: 2px dashed rgba(255,255,255,0.3); padding-bottom: 10px; text-align: center; font-family: 'Comic Sans MS', cursive, sans-serif;">Мои артефакты</h3>
                         <div class="artifact-grid">
                             {% for item in my_inventory %}
-                            <div class="artifact-item" style="background: rgba(26, 92, 77, 0.8); border: 1px solid rgba(255,255,255,0.2);">
-                                <img src="{{ url_for('static', filename='img/artifacts/' ~ item.id ~ '.png') }}" alt="{{ item.name }}" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px;">
-                                <h4 style="font-size: 14px; margin-bottom: 5px; color: white;">{{ item.name }}</h4>
+                            <div class="artifact-item" style="background-color: #206a5a; border: 2px solid rgba(255,255,255,0.2);">
+                                <img src="{{ url_for('static', filename='img/artifacts/' ~ item.id ~ '.png') }}" alt="{{ item.name }}" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 15px; filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.5));">
+                                <h4 style="font-size: 16px; margin-bottom: 5px; color: white; text-shadow: 1px 1px 3px #000;">{{ item.name }}</h4>
                                 <p style="font-size: 12px; color: #a3d9cf;">{{ item.set_name }}</p>
                             </div>
                             {% else %}
-                            <p style="color: rgba(255,255,255,0.6);">Пока пусто... Загляни в магазин!</p>
+                            <p style="color: rgba(255,255,255,0.8); text-align: center; width: 100%; font-size: 18px; margin: 20px 0;">Пока пусто... Загляни в магазин! 🛒</p>
                             {% endfor %}
                         </div>
                     </div>
@@ -119,7 +135,6 @@
                 </div>
             </div>
         </div>
-
         <!-- МАГАЗИН (Скрыт) -->
         <div id="shopPage" class="page">
             <div class="container">
