@@ -952,3 +952,69 @@ select.form-control {
     animation: float-boss infinite ease-in-out;
     pointer-events: none;
 }
+/* ==================================================
+   🌊 ДИЗАЙН СТРАНИЦЫ ВХОДА (ПЛЯЖ)
+   ================================================== */
+
+.login-stage {
+    /* Фон на весь экран */
+    background: url('../img/login_bg.png') no-repeat center center;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Стеклянная карточка входа */
+.login-glass-card {
+    background: rgba(255, 255, 255, 0.85); /* Полупрозрачный белый */
+    backdrop-filter: blur(10px); /* Размытие заднего фона */
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 24px;
+    padding: 40px 35px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 420px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+/* Красивый игровой заголовок */
+.login-title {
+    color: #1d7480; /* Темно-бирюзовый */
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 32px;
+    font-weight: bold;
+    text-shadow: 2px 2px 0px rgba(255,255,255,0.8);
+}
+
+/* Делаем поля ввода мягкими и приятными */
+.login-glass-card .form-control {
+    border-radius: 12px;
+    border: 2px solid #a3d9cf;
+    padding: 12px 15px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.login-glass-card .form-control:focus {
+    border-color: #2c8c7c;
+    box-shadow: 0 0 0 4px rgba(44, 140, 124, 0.2);
+}
+
+/* Скругляем кнопки внутри формы */
+.login-glass-card .btn {
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 16px;
+    padding: 12px;
+}
+
+/* Настраиваем переключатели (Ученик/Учитель) */
+.login-glass-card .toggle-switch .btn {
+    border-radius: 10px;
+    padding: 10px;
+}
