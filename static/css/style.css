@@ -779,3 +779,134 @@ select.form-control {
     margin: 15px 0;
     text-shadow: 2px 2px 0px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; /* Жирная черная обводка */
 }
+/* ==================================================
+   🌊 ГЛАВНАЯ СТРАНИЦА И ПРОФИЛЬ (ОКЕАН)
+   ================================================== */
+
+/* Общая подводная сцена */
+.underwater-stage {
+    background: url('../img/bg.png') no-repeat center bottom;
+    background-size: cover;
+    background-attachment: fixed;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    padding-bottom: 50px;
+}
+
+/* --- КАСТОМНЫЙ ХП-БАР (Из Paint) --- */
+.hp-pill-wrapper {
+    width: 250px;
+    height: 50px;
+    background-color: #8b0000; /* Темно-красный (пустота) */
+    border: 4px solid #000;
+    border-radius: 50% / 100%; /* Делает форму вытянутого эллипса */
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto 20px auto;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+}
+
+.hp-pill-fill {
+    height: 100%;
+    background-color: #bce523; /* Кислотно-зеленый (здоровье) */
+    border-right: 4px solid #000;
+    transition: width 0.5s ease;
+}
+
+.hp-pill-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    font-size: 26px;
+    font-weight: bold;
+    color: #000;
+    text-shadow: 1px 1px 0px #fff; /* Белая обводка текста для читаемости */
+}
+
+/* --- БОСС И ДЕКОРАЦИИ --- */
+.boss-character {
+    width: 350px;
+    height: auto;
+    filter: drop-shadow(0px 30px 15px rgba(0,0,0,0.5));
+    animation: float-boss 4s ease-in-out infinite;
+    position: relative;
+    z-index: 10;
+}
+
+@keyframes float-boss {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.seaweed {
+    position: absolute;
+    bottom: -20px;
+    width: 180px;
+    z-index: 5;
+}
+
+/* --- КНОПКИ-ПУЗЫРИ --- */
+.bubble-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0; left: 0;
+    pointer-events: none; /* Разрешаем кликать сквозь этот слой */
+}
+
+.bubble-btn {
+    position: absolute;
+    width: 130px;
+    height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    pointer-events: auto; /* Включаем клики для самих пузырей */
+    animation: float-bubble 3s ease-in-out infinite;
+    transition: transform 0.2s;
+    z-index: 20;
+}
+
+.bubble-btn:hover { transform: scale(1.1); }
+
+.bubble-bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.bubble-icon {
+    z-index: 2;
+    width: 60px;
+    height: 60px;
+}
+
+.bubble-text {
+    z-index: 2;
+    font-family: 'Comic Sans MS', cursive;
+    font-size: 55px;
+    font-weight: bold;
+    color: #0b1a30;
+}
+
+@keyframes float-bubble {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(3deg); }
+}
+
+/* --- ПАНЕЛИ ПРОФИЛЯ (Эффект мокрого стекла) --- */
+.glass-card {
+    background: rgba(17, 60, 70, 0.7);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 25px;
+    color: white;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+    margin-bottom: 24px;
+}

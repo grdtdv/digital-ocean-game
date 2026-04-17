@@ -3,99 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <title>Кабинет ученика</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10">
 </head>
 <body>
     <div class="app-container">
 
-        <!-- ГЛАВНАЯ СТРАНИЦА (active по умолчанию) -->
+        <!-- ГЛАВНАЯ СТРАНИЦА (БОСС) -->
         <div id="homePage" class="page active">
-            <div class="container">
-                <h1 class="mb-24">Привет, {{ session['username'] }}!</h1>
+            <div class="underwater-stage">
+                
+                <!-- Декорации: Водоросли слева и справа -->
+                <img src="{{ url_for('static', filename='img/seaweed.png') }}" class="seaweed" style="left: 2%;">
+                <img src="{{ url_for('static', filename='img/seaweed.png') }}" class="seaweed" style="right: 2%; transform: scaleX(-1);">
 
-                <div class="monster-card card">
-                    <div class="card__body">
-                        <!-- Теперь имя берется из базы данных! -->
-                        <h2 class="text-center mb-24">{{ monster.name }}</h2>
-                        
-                        <div style="text-align: center; margin-bottom: 20px; font-size: 60px;">👹</div>
-                        
-                        <!-- Четверть монстра -->
-                        <div style="text-align: center; margin-bottom: 10px;">
-                            <span class="level-badge">Четверть {{ monster.quarter }}</span>
-                        </div>
+                <!-- Кнопки-пузыри навигации -->
+                <div class="bubble-container">
+                    <!-- Профиль (Буква Я) -->
+                    <div class="bubble-btn" style="top: 20%; left: 15%;" onclick="navigateTo('profilePage')">
+                        <img src="{{ url_for('static', filename='img/bubble.png') }}" class="bubble-bg">
+                        <span class="bubble-text">Я</span>
+                    </div>
+                    
+                    <!-- Магазин (Корзина) -->
+                    <div class="bubble-btn" style="top: 30%; right: 15%;" onclick="navigateTo('shopPage')">
+                        <img src="{{ url_for('static', filename='img/bubble.png') }}" class="bubble-bg">
+                        <img src="{{ url_for('static', filename='img/cart.png') }}" class="bubble-icon">
+                    </div>
+                </div>
 
-                        <div class="progress-bar">
-                            <!-- Здоровье тоже высчитывается из базы -->
-                            <div class="progress-bar__fill" style="width: {{ (monster.current_hp / monster.max_hp) * 100 }}%;">
-                                {{ monster.current_hp }}/{{ monster.max_hp }}
-                            </div>
+                <!-- Центральная сцена с боссом -->
+                <div style="position: relative; z-index: 10; text-align: center; padding-top: 50px;">
+                    
+                    <!-- Твой кастомный ХП-бар -->
+                    <div class="hp-pill-wrapper">
+                        <div class="hp-pill-fill" style="width: {{ (monster.current_hp / monster.max_hp) * 100 }}%;"></div>
+                        <div class="hp-pill-text">ХП {{ monster.current_hp }}</div>
+                    </div>
+
+                    <!-- Монстр -->
+                    <img src="{{ url_for('static', filename='img/monster1.png') }}" class="boss-character">
+                    
+                    <div style="text-align: center; margin-top: -20px;">
+                        <span class="status" style="background: rgba(255,255,255,0.8); color: black; font-weight: bold; border: 2px solid black;">
+                            {{ monster.name }} (Четверть {{ monster.quarter }})
+                        </span>
+                    </div>
+                    
+                    <!-- Блок атаки (стеклянный) -->
+                    <div class="glass-card" style="display: inline-block; margin-top: 30px; padding: 15px 30px;">
+                        <h3 style="margin-top: 0; color: #fff; text-shadow: 1px 1px 2px #000;">Баланс: {{ student.current_points }} 🐚</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 15px;">
+                            <input type="number" id="helpPoints" class="form-control" style="width: 100px; font-size: 20px; font-weight: bold; text-align: center;" value="10">
+                            <button class="btn btn--primary" style="background: #ff3b3b; border: 2px solid white; font-size: 18px;" onclick="helpMonster()">Атаковать!</button>
                         </div>
                     </div>
                 </div>
-                <div class="balance-card">
-                    <h3>Твой баланс</h3>
-                    <!-- СЮДА FLASK ВСТАВИТ БАЛЛЫ ИЗ БАЗЫ -->
-                    <div style="font-size: 30px; font-weight: bold;">{{ student.current_points }} баллов</div>
-                </div>
 
-                <!-- Меню навигации (работает через JS) -->
-                <div class="nav-menu mt-16">
-                    <button class="btn btn--secondary" onclick="navigateTo('profilePage')">Профиль</button>
-                    <button class="btn btn--secondary" onclick="navigateTo('shopPage')">Магазин</button>
-                    <a href="/logout" class="btn btn--outline">Выход</a>
-                </div>
             </div>
         </div>
 
-        <!-- ПРОФИЛЬ (Скрыт) -->
+        <!-- ПРОФИЛЬ УЧЕНИКА -->
         <div id="profilePage" class="page">
-            <div class="container">
-                <h1 class="mb-24">Профиль</h1>
-                <div class="profile-header">
-                    <div style="font-size: 60px;">👦</div>
-                    <h2>{{ session['username'] }}</h2>
-                    <div class="level-badge mt-16">Уровень {{ student.level }}</div>
-                </div>
-                <!-- БЛОК: СЕТЫ АРТЕФАКТОВ -->
-<h3 class="section-title">Сеты артефактов</h3>
-<div class="artifact-grid">
-    {% for s in sets_data %}
-    <!-- Если сет одобрен, делаем его блёклым (opacity: 0.5 и ЧБ). Если собран, но не активирован - золотая рамка -->
-    <div class="artifact-item" style="
-        {% if s.status == 'approved' %}opacity: 0.5; filter: grayscale(100%);{% endif %}
-        border: 2px solid {% if s.is_complete and s.status != 'approved' %}gold{% else %}transparent{% endif %};
-    ">
-        <h4>{{ s.name }}</h4>
-        <p style="font-size: 12px; color: gray;">Прогресс: {{ s.owned }} из {{ s.total }} предметов</p>
-        
-        <div style="margin-top: 15px;">
-            {% if s.status == 'approved' %}
-                <span class="status status--success">Сет использован</span>
-            {% elif s.status == 'pending' %}
-                <span class="status status--warning">Ожидает одобрения учителя...</span>
-            {% elif s.is_complete %}
-                <button class="btn btn--primary btn--full-width" onclick="activateSet('{{ s.name }}')">Активировать сет</button>
-            {% else %}
-                <span class="status status--info">Сет не собран</span>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
-</div>
-<!-- КОНЕЦ БЛОКА -->
-                <h3 class="section-title">Мои артефакты</h3>
-                <div class="artifact-grid">
-                    {% for item in my_inventory %}
-                    <div class="artifact-item" style="border: 2px solid gold;">
-                        <h4>{{ item.name }}</h4>
-                        <p>{{ item.set_name }}</p>
+            <div class="underwater-stage" style="padding-top: 40px;">
+                <div class="container">
+                    
+                    <!-- Стеклянная карточка профиля -->
+                    <div class="glass-card profile-header">
+                        <div style="font-size: 80px; margin-bottom: 10px;">{% if student.avatar_type == 'girl' %}👧{% else %}👦{% endif %}</div>
+                        <h1 style="color: white; text-shadow: 2px 2px 4px #000;">{{ session['username'] }}</h1>
+                        <div class="level-badge mt-16" style="background: #e68161; border: 2px solid #fff; font-size: 20px;">Уровень {{ student.level }}</div>
+                        <button class="btn btn--secondary mt-16" style="background: white; color: black;" onclick="navigateTo('homePage')">Вернуться на базу</button>
                     </div>
-                    {% else %}
-                    <p style="color: gray;">Пока пусто...</p>
-                    {% endfor %}
+
+                    <!-- БЛОК: СЕТЫ АРТЕФАКТОВ -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="color: #fff; border-bottom-color: rgba(255,255,255,0.3);">Сеты артефактов</h3>
+                        <div class="artifact-grid">
+                            {% for s in sets_data %}
+                            <div class="artifact-item" style="background: rgba(0,0,0,0.4); border: 2px solid {% if s.is_complete and s.status != 'approved' %}gold{% else %}transparent{% endif %}; {% if s.status == 'approved' %}opacity: 0.5; filter: grayscale(100%);{% endif %}">
+                                <h4 style="color: white;">{{ s.name }}</h4>
+                                <p style="font-size: 12px; color: #a3d9cf;">Прогресс: {{ s.owned }} из {{ s.total }} предметов</p>
+                                
+                                <div style="margin-top: 15px;">
+                                    {% if s.status == 'approved' %}
+                                        <span class="status status--success">Сет использован</span>
+                                    {% elif s.status == 'pending' %}
+                                        <span class="status status--warning" style="background: #f59e0b; color: white;">Ожидает учителя...</span>
+                                    {% elif s.is_complete %}
+                                        <button class="btn btn--primary btn--full-width" style="background: gold; color: black;" onclick="activateSet('{{ s.name }}')">Активировать сет</button>
+                                    {% else %}
+                                        <span class="status status--info" style="background: rgba(255,255,255,0.2); color: white;">Сет не собран</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- БЛОК: МОИ АРТЕФАКТЫ -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="color: #fff; border-bottom-color: rgba(255,255,255,0.3);">Мои артефакты</h3>
+                        <div class="artifact-grid">
+                            {% for item in my_inventory %}
+                            <div class="artifact-item" style="background: rgba(26, 92, 77, 0.8); border: 1px solid rgba(255,255,255,0.2);">
+                                <img src="{{ url_for('static', filename='img/artifacts/' ~ item.id ~ '.png') }}" alt="{{ item.name }}" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px;">
+                                <h4 style="font-size: 14px; margin-bottom: 5px; color: white;">{{ item.name }}</h4>
+                                <p style="font-size: 12px; color: #a3d9cf;">{{ item.set_name }}</p>
+                            </div>
+                            {% else %}
+                            <p style="color: rgba(255,255,255,0.6);">Пока пусто... Загляни в магазин!</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
                 </div>
-                <button class="btn btn--secondary btn--full-width mt-16" onclick="navigateTo('homePage')">Назад</button>
             </div>
         </div>
 

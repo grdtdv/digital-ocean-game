@@ -432,6 +432,66 @@ def delete_event():
         conn.close()
 
 
+# --- API: УЧЕНИК АТАКУЕТ МОНСТРА ---
+@app.route('/api/attack_monster', methods=['POST'])
+def attack_monster():
+    # Проверка, что это ученик
+    if 'user_id' not in session or session['role'] != 'student':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    amount = int(request.json.get('amount', 0))
+    if amount <= 0:
+        return jsonify({'status': 'error', 'message': 'Некорректный урон'})
+
+    user_id = session['user_id']
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # 1. Проверяем баланс ученика
+        cursor.execute('SELECT current_points FROM student_progress WHERE user_id = %s', (user_id,))
+        student = cursor.fetchone()
+
+        if student['current_points'] < amount:
+            return jsonify({'status': 'error', 'message': 'Недостаточно баллов!'})
+
+        # 2. Ищем активного монстра
+        cursor.execute('SELECT id, current_hp FROM monsters WHERE is_active = TRUE LIMIT 1')
+        monster = cursor.fetchone()
+
+        if not monster:
+            return jsonify({'status': 'error', 'message': 'Монстр не найден!'})
+        if monster['current_hp'] <= 0:
+            return jsonify({'status': 'error', 'message': 'Монстр уже побежден!'})
+
+        # 3. Списываем баллы у ученика
+        cursor.execute('''
+            UPDATE student_progress 
+            SET current_points = current_points - %s, total_spent = total_spent + %s 
+            WHERE user_id = %s
+        ''', (amount, amount, user_id))
+
+        # 4. Наносим урон монстру (ХП не упадет ниже нуля благодаря GREATEST)
+        cursor.execute('''
+            UPDATE monsters 
+            SET current_hp = GREATEST(0, current_hp - %s) 
+            WHERE id = %s
+        ''', (amount, monster['id']))
+
+        # 5. Пишем в историю транзакций
+        cursor.execute('''
+            INSERT INTO transactions (student_id, amount, reason) 
+            VALUES (%s, %s, %s)
+        ''', (user_id, -amount, "Урон монстру"))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
 @app.route('/logout')
 def logout():
     session.clear()
