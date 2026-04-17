@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Кабинет ученика</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
 </head>
 <body>
     <div class="app-container">
@@ -103,44 +103,50 @@
         <div id="shopPage" class="page">
             <div class="container">
                 <h1 class="mb-24">Магазин артефактов</h1>
-                <div class="balance-card">
-                    <h3>Доступно: {{ student.current_points }} баллов</h3>
-                </div>
                 
-                <div class="filter-buttons">
-                    <button class="btn btn--primary" onclick="filterShop('my')">Мой уровень</button>
-                    <button class="btn btn--secondary" onclick="filterShop('all')">Все</button>
+                <div class="balance-card" style="background: rgba(255,255,255,0.9); max-width: 300px; margin: 0 auto; border-radius: 12px; padding: 10px;">
+                    <h3 style="color: #333; margin: 0;">Ваши баллы</h3>
+                    <div style="font-size: 30px; font-weight: bold; color: #2c8c7c;">
+                        {{ student.current_points }}
+                    </div>
                 </div>
 
+                <!-- ПРИЛАВОК И ПРОДАВЕЦ -->
+                <div class="shop-counter-wrapper">
+                    <!-- Убедись, что тут путь к картинке БЕЗ фона -->
+                    <img src="{{ url_for('static', filename='img/octopus.png') }}?v=1" alt="Продавец" class="shop-merchant">
+                    <div class="shop-counter"></div>
+                </div>
+
+                <!-- ТОВАРЫ -->
                 <div class="artifact-grid">
-                    <!-- Цикл JINJA2: Пробегаемся по всем товарам из базы -->
                     {% for item in artifacts %}
                     <div class="artifact-item" data-mylevel="{{ 'true' if item.min_level <= student.level else 'false' }}">
-                        <h4 style="margin-bottom: 8px;">{{ item.name }}</h4>
-                        <p style="font-size: 12px; color: gray;">{{ item.set_name }}</p>
-                        <p style="font-size: 12px;">Мин. уровень: {{ item.min_level }}</p>
-                        <div style="font-size: 20px; font-weight: bold; color: #33808d; margin-bottom: 12px;">
-                            {{ item.price }} баллов
-                        </div>
                         
-                        <!-- Проверяем, куплен ли товар -->
+                        <!-- ВОТ ЭТА НОВАЯ СТРОЧКА ДЛЯ КАРТИНКИ АРТЕФАКТА -->
+                        <img src="{{ url_for('static', filename='img/artifacts/' ~ item.id ~ '.png') }}" 
+                             alt="{{ item.name }}" 
+                             style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.5));">
+                        
+                        <h4 style="margin-bottom: 8px;">{{ item.name }}</h4>
+                        <p style="font-size: 12px; margin-bottom: 0;">Уровень: {{ item.min_level }}</p>
+                        
+                        <div class="price-text">{{ item.price }}</div>
+                        
                         {% if item.id in inventory_ids %}
-                            <button class="btn btn--secondary btn--full-width" disabled>Уже куплено</button>
+                            <button class="btn btn--full-width" disabled style="background: rgba(0,0,0,0.5); color: #fff;">Уже куплено</button>
                         {% elif student.current_points < item.price %}
-                            <button class="btn btn--secondary btn--full-width" disabled>Не хватает денег</button>
+                            <button class="btn btn--full-width" disabled style="background: rgba(0,0,0,0.5); color: #ccc;">Мало баллов</button>
                         {% else %}
-                            <!-- Кнопка вызывает JS функцию -->
-                            <button class="btn btn--primary btn--full-width" onclick="buyArtifact({{ item.id }})">Купить</button>
+                            <button class="btn btn--primary btn--full-width" style="background: #2c8c7c; border: 2px solid #fff;" onclick="buyArtifact({{ item.id }})">Купить</button>
                         {% endif %}
                     </div>
                     {% endfor %}
                 </div>
 
-                <button class="btn btn--secondary btn--full-width mt-16" onclick="navigateTo('homePage')">Назад</button>
+                <button class="btn btn--secondary btn--full-width mt-16" style="background: white; color: black;" onclick="navigateTo('homePage')">Вернуться на базу</button>
             </div>
         </div>
-
-    </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

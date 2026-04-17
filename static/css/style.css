@@ -693,3 +693,89 @@ select.form-control {
     padding-bottom: var(--space-8);
     border-bottom: 2px solid var(--color-border);
 }
+
+/* ==================================================
+   🌊 ДИЗАЙН МАГАЗИНА (По референсам из Paint)
+   ================================================== */
+
+/* ==================================================
+   🌊 ДИЗАЙН МАГАЗИНА (ОБНОВЛЕННЫЙ)
+   ================================================== */
+
+#shopPage {
+    background-color: #2c8c7c;
+    min-height: 100vh;
+    padding-top: 20px;
+}
+
+/* 1. ПРИЛАВОК И ПРОДАВЕЦ */
+.shop-counter-wrapper {
+    position: relative;
+    margin-top: 140px; /* Сделали отступ больше, чтобы осьминог не закрывал баллы */
+    margin-bottom: 50px;
+    width: 100%;
+}
+
+.shop-merchant {
+    position: absolute;
+    bottom: 20px; /* Опускаем его за прилавок */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px; /* Чуть увеличили */
+    z-index: 1; /* ОСЬМИНОГ СЗАДИ (Слой 1) */
+}
+
+.shop-counter {
+    position: relative;
+    z-index: 2; /* ПРИЛАВОК СПЕРЕДИ (Слой 2) */
+    height: 50px;
+    width: 100%;
+    background: linear-gradient(to bottom, #f2c78f, #d59f5b, #a67139);
+    border-top: 6px solid #ffdfaf;
+    border-bottom: 8px solid #5c3a21;
+    border-radius: 8px;
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* 2. СЕТКА АРТЕФАКТОВ (Симметрия) */
+#shopPage .artifact-grid {
+    display: flex; /* Меняем Grid на Flexbox */
+    flex-wrap: wrap; /* Позволяем переноситься на новую строку */
+    justify-content: center; /* МАГИЯ: Автоматически центрирует любой ряд! */
+    gap: 25px; /* Расстояние между кляксами */
+    margin-top: 40px;
+}
+
+/* 3. КЛЯКСЫ (Сами карточки) */
+#shopPage .artifact-item {
+    width: 250px; /* Жестко фиксируем ширину */
+    flex: 0 0 250px; /* Запрещаем им сужаться или растягиваться */
+    background-color: #1a5c4d; 
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; 
+    box-shadow: inset 0 -10px 20px rgba(0,0,0,0.3), 0 10px 15px rgba(0,0,0,0.2);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px;
+    transition: transform 0.3s ease, border-radius 0.4s ease;
+}
+
+#shopPage .artifact-item:hover {
+    transform: translateY(-10px);
+    border-radius: 50% 50% 40% 60% / 60% 40% 50% 50%; 
+}
+
+/* Тексты внутри */
+#shopPage .artifact-item h4 {
+    color: #fff; text-align: center; text-shadow: 1px 1px 3px black; font-size: 16px;
+}
+#shopPage .artifact-item .price-text {
+    font-size: 40px;
+    color: #ff3b3b;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    font-weight: bold;
+    margin: 15px 0;
+    text-shadow: 2px 2px 0px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; /* Жирная черная обводка */
+}
