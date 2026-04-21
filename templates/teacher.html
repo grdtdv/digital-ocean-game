@@ -2,117 +2,137 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>wtf-1</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .page {
-            display: block !important;
-        }
-    </style>
+    <title>Кабинет Учителя</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11">
 </head>
-<body>
-    <div class="app-container">
-        <div class="container">
-            <h1 class="mb-24">wtf0</h1>
-            <div class="card mb-24">
-    <div class="card__body">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <button class="btn btn--primary" onclick="openCompleteMonsterModal()">Завершить уровень монстра</button>
-            <button class="btn btn--primary" onclick="levelUpClass()">Перевести класс на новый уровень</button>
+<body class="teacher-stage">
+    
+    <div class="teacher-layout">
+        <!-- БОКОВОЕ МЕНЮ -->
+        <div class="teacher-sidebar">
+            <ul class="sidebar-menu">
+                <li onclick="showSection('actions')">• Основная страничка</li>
+                <li>• Статистика
+                    <ul>
+                        <li onclick="showSection('students')">- Ученики</li>
+                        <li onclick="showSection('actions')">- Последние действия</li>
+                    </ul>
+                </li>
+                <li>• Монстр
+                    <ul>
+                        <li onclick="showSection('monster')">- Данные и Управление</li>
+                    </ul>
+                </li>
+            </ul>
             
-            <!-- НОВАЯ КНОПКА АТАКИ -->
-            <button class="btn" style="background-color: #c0152f; color: white;" onclick="openMonsterAttackModal()">
-                Атака монстра 👹
-            </button>
-            <!-- НОВАЯ КНОПКА НАСТРОЕК -->
-            <button class="btn btn--secondary" onclick="openSettingsModal()">
-                ⚙️ Настройки баллов
-            </button>
+            <br><br><br>
+            <a href="/logout" class="btn" style="background: transparent; border: 2px solid #4a2e15; color: #4a2e15; font-weight: bold; border-radius: 20px; padding: 10px 20px;">🚪 Выйти</a>
         </div>
-    </div>
-</div>
-            <div class="card mb-24">
-                <div class="card__body">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h3>Управление классом</h3>
-        <!-- НОВАЯ ОБЩАЯ КНОПКА (изначально отключена) -->
-        <button id="bulkPointsBtn" class="btn btn--primary" onclick="openBulkPointsModal()" disabled>
-            Начислить выбранным
-        </button>
-    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <!-- ГЛАВНЫЙ ЧЕКБОКС -->
-                <th style="width: 40px;">
-                    <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" style="transform: scale(1.5); cursor: pointer;">
-                </th>
-                <th>Имя</th>
-                <th>Баллы</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for student in students %}
-            <tr>
-                <!-- ЧЕКБОКС ДЛЯ КАЖДОГО УЧЕНИКА -->
-                <td>
-                    <input type="checkbox" class="student-checkbox" value="{{ student.id }}" onclick="updateBulkButtonState()" style="transform: scale(1.5); cursor: pointer;">
-                </td>
-                <td>{{ student.full_name }}</td>
-                <td>{{ student.current_points }}</td>
-                <td>
-                    <button class="btn btn--sm btn--outline" 
-                            onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">
-                        Индивидуально
-                    </button>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="4" style="text-align: center;">Учеников пока нет</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+        <!-- ОСНОВНОЙ КОНТЕНТ -->
+        <div class="teacher-content">
+            
+            <!-- ПРИВЕТСТВИЕ И АВАТАР -->
+            <div class="teacher-header-block">
+                <div class="teacher-avatar">
+                    <!-- SVG иконка человечка -->
+                    <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </div>
+                <h1 class="teacher-greeting">Добрый день,<br>{{ session['full_name'] }}!</h1>
             </div>
-<!-- БЛОК ЗАЯВОК НА СЕТЫ -->
-<div class="card mb-24">
-    <div class="card__body">
-        <h3>Заявки на активацию сетов</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Ученик</th>
-                    <th>Название сета</th>
-                    <th>Действие</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in pending_requests %}
-                <tr>
-                    <td>{{ req.full_name }}</td>
-                    <td>{{ req.set_name }}</td>
-                    <td>
-                        <button class="btn btn--sm btn--primary" onclick="approveSet({{ req.id }})">Одобрить</button>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="3" style="text-align: center; color: gray;">Нет новых заявок</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-            <a href="/logout" class="btn btn--outline btn--full-width">wtf5</a>
+
+            <!-- РАЗДЕЛ 1: ПОСЛЕДНИЕ ДЕЙСТВИЯ (Главная) -->
+            <div id="sec-actions" class="teacher-section active">
+                <table class="paint-table">
+                    <thead>
+                        <tr>
+                            <th>Ученик</th>
+                            <th>Действие</th>
+                            <th>Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for act in recent_actions %}
+                        <tr>
+                            <td><strong>{{ act.student_name }}</strong></td>
+                            <td>{{ act.action }}</td>
+                            <td><strong>{{ act.date }}</strong></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align: center;">Действий пока нет</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- РАЗДЕЛ 2: УЧЕНИКИ (Начисление баллов) -->
+            <div id="sec-students" class="teacher-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: #4a2e15;">Список учеников</h2>
+                    <div>
+                        <button id="bulkPointsBtn" class="btn" style="background: #4a2e15; color: white;" onclick="openBulkPointsModal()" disabled>Начислить выбранным</button>
+                        <button class="btn btn--secondary" style="border: 2px solid #4a2e15;" onclick="openSettingsModal()">⚙️ Настройки</button>
+                    </div>
+                </div>
+
+                <table class="paint-table" style="font-size: 18px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" style="transform: scale(1.5);"></th>
+                            <th>Имя</th>
+                            <th>Баллы</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td><input type="checkbox" class="student-checkbox" value="{{ student.id }}" onclick="updateBulkButtonState()" style="transform: scale(1.5);"></td>
+                            <td><strong>{{ student.full_name }}</strong></td>
+                            <td>{{ student.current_points }}</td>
+                            <td><button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">Индивидуально</button></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- РАЗДЕЛ 3: МОНСТР И ЗАЯВКИ -->
+            <div id="sec-monster" class="teacher-section">
+                
+                <h2 style="color: #4a2e15; margin-bottom: 20px;">Управление игрой</h2>
+                <div style="display: flex; gap: 15px; margin-bottom: 40px;">
+                    <button class="btn" style="background: #c0152f; color: white;" onclick="openMonsterAttackModal()">Атака монстра 👹</button>
+                    <button class="btn" style="background: #4a90e2; color: white;" onclick="openCompleteMonsterModal()">Завершить уровень монстра</button>
+                    <button class="btn" style="background: #2c8c7c; color: white;" onclick="levelUpClass()">Перевести класс (Уровень+1)</button>
+                </div>
+
+                <h2 style="color: #4a2e15; margin-bottom: 20px;">Заявки на сеты</h2>
+                <table class="paint-table" style="font-size: 18px;">
+                    <thead>
+                        <tr>
+                            <th>Ученик</th>
+                            <th>Название сета</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in pending_requests %}
+                        <tr>
+                            <td><strong>{{ req.full_name }}</strong></td>
+                            <td>{{ req.set_name }}</td>
+                            <td><button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="approveSet({{ req.id }})">Одобрить</button></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align: center;">Нет новых заявок</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
-    <!-- ЭТО ОКНО ДОЛЖНО БЫТЬ В ФАЙЛЕ teacher.html -->
-     <div id="addPointsModal" class="modal">
+    <div id="addPointsModal" class="modal">
         <div class="modal-content">
             <h2 class="mb-24">Начислить баллы</h2>
             <div id="selectedStudentName" style="margin-bottom: 15px; font-weight: bold;"></div>
@@ -204,6 +224,17 @@
             </div>
         </div>
     </div>
-<script src="{{ url_for('static', filename='js/main.js') }}?v=6"></script>
+    <!-- ТУТ ОСТАЮТСЯ ВСЕ ТВОИ МОДАЛЬНЫЕ ОКНА (Просто скопируй их из старого файла) -->
+    <!-- Вставь сюда окна: addPointsModal, settingsModal, monsterAttackModal, completeMonsterModal -->
+
+    <!-- СКРИПТЫ -->
+    <script>
+        // Функция для переключения вкладок
+        function showSection(sectionId) {
+            document.querySelectorAll('.teacher-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('sec-' + sectionId).classList.add('active');
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
 </body>
 </html>

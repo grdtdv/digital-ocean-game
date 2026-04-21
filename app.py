@@ -144,11 +144,12 @@ def teacher_dashboard():
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
 
+    # 1. Ученики
     cursor.execute(
         'SELECT u.id, u.full_name, sp.current_points FROM users u JOIN student_progress sp ON u.id = sp.user_id WHERE u.role = "student"')
     students = cursor.fetchall()
 
-    # --- ЗАЯВКИ НА СЕТЫ ---
+    # 2. Заявки на сеты
     cursor.execute('''
         SELECT r.id, r.set_name, u.full_name 
         FROM set_requests r 
@@ -156,19 +157,31 @@ def teacher_dashboard():
         WHERE r.status = 'pending'
     ''')
     pending_requests = cursor.fetchall()
-    # ----------------------
-    # ... тут был код со списком учеников ...
 
-    # ЗАГРУЖАЕМ СОБЫТИЯ ИЗ БАЗЫ
+    # 3. Настройки событий
     cursor.execute('SELECT * FROM grading_events')
     grading_events = cursor.fetchall()
 
+    # 4. ПОСЛЕДНИЕ ДЕЙСТВИЯ (НОВОЕ!)
+    cursor.execute('''
+        SELECT u.full_name as student_name, t.reason as action, t.created_at as date 
+        FROM transactions t 
+        JOIN users u ON t.student_id = u.id 
+        ORDER BY t.created_at DESC LIMIT 15
+    ''')
+    recent_actions = cursor.fetchall()
+
+    # Форматируем дату, чтобы было красиво (например, 25.09.26)
+    for act in recent_actions:
+        if act['date']:
+            act['date'] = act['date'].strftime('%d.%m.%y')
+
     conn.close()
-
-    # Не забудь добавить grading_events=grading_events в return!
-    return render_template('teacher.html', students=students, pending_requests=pending_requests,
-                           grading_events=grading_events)
-
+    return render_template('teacher.html',
+                           students=students,
+                           pending_requests=pending_requests,
+                           grading_events=grading_events,
+                           recent_actions=recent_actions)  # Передаем действия в HTML
 
 # --- API ---
 @app.route('/api/buy_artifact', methods=['POST'])
