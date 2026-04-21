@@ -1143,3 +1143,47 @@ select.form-control {
 .paint-table td:not(:last-child) {
     border-right: 4px solid #4a2e15;
 }
+/* ==================================================
+   👨‍🎓 КАРТОЧКИ УЧЕНИКОВ (ВКЛАДКА СТАТИСТИКИ)
+   ================================================== */
+.students-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.student-card {
+    border-radius: 25px;
+    padding: 25px 20px;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.05);
+    border: 3px solid #5a7b8c;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.student-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Цветовые темы */
+.student-card.boy { background-color: #c1f4fb !important; border-color: #4ca3c2 !important; }
+.student-card.girl { background-color: #ffcfc8 !important; border-color: #d18182 !important; }
+
+/* Иконка профиля */
+.student-card-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 15px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.student-card.boy .student-card-avatar { background-color: #2196f3 !important; }
+.student-card.girl .student-card-avatar { background-color: #d3414b !important; }
+
+/* ВОТ ЭТО ПРАВИЛО УМЕНЬШИТ ГИГАНТСКОГО ЧЕЛОВЕЧКА */
+.student-card-avatar svg { 
+    width: 45px !important; 
+    height: 4

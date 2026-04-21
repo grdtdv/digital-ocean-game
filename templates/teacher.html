@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Кабинет Учителя</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=99">
 </head>
 <body class="teacher-stage">
     
@@ -11,15 +11,21 @@
         <!-- БОКОВОЕ МЕНЮ -->
         <div class="teacher-sidebar">
             <ul class="sidebar-menu">
-                <li onclick="showSection('actions')">• Основная страничка</li>
+                <!-- Вкладка 1 -->
+                <li onclick="showSection('main')">• Основная страничка</li>
+                
                 <li>• Статистика
                     <ul>
-                        <li onclick="showSection('students')">- Ученики</li>
+                        <!-- Вкладка 2 -->
+                        <li onclick="showSection('stats_students')">- Ученики</li>
+                        <!-- Вкладка 3 -->
                         <li onclick="showSection('actions')">- Последние действия</li>
                     </ul>
                 </li>
+                
                 <li>• Монстр
                     <ul>
+                        <!-- Вкладка 4 -->
                         <li onclick="showSection('monster')">- Данные и Управление</li>
                     </ul>
                 </li>
@@ -35,14 +41,71 @@
             <!-- ПРИВЕТСТВИЕ И АВАТАР -->
             <div class="teacher-header-block">
                 <div class="teacher-avatar">
-                    <!-- SVG иконка человечка -->
                     <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                 </div>
                 <h1 class="teacher-greeting">Добрый день,<br>{{ session['full_name'] }}!</h1>
             </div>
 
-            <!-- РАЗДЕЛ 1: ПОСЛЕДНИЕ ДЕЙСТВИЯ (Главная) -->
-            <div id="sec-actions" class="teacher-section active">
+            <!-- === ВКЛАДКА 1: ОСНОВНАЯ СТРАНИЧКА (Таблица для баллов) === -->
+            <div id="sec-main" class="teacher-section active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: #4a2e15;">Журнал класса</h2>
+                    <div>
+                        <button id="bulkPointsBtn" class="btn" style="background: #4a2e15; color: white;" onclick="openBulkPointsModal()" disabled>Начислить выбранным</button>
+                        <button class="btn btn--secondary" style="border: 2px solid #4a2e15;" onclick="openSettingsModal()">⚙️ Настройки</button>
+                    </div>
+                </div>
+
+                <table class="paint-table" style="font-size: 18px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" style="transform: scale(1.5); accent-color: #4a2e15; cursor: pointer;"></th>
+                            <th>Имя</th>
+                            <th>Баллы</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td><input type="checkbox" class="student-checkbox" value="{{ student.id }}" onclick="updateBulkButtonState()" style="transform: scale(1.5); accent-color: #4a2e15; cursor: pointer;"></td>
+                            <td><strong>{{ student.full_name }}</strong></td>
+                            <td>{{ student.current_points }}</td>
+                            <td><button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">Индивидуально</button></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align: center;">Учеников пока нет</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- === ВКЛАДКА 2: СТАТИСТИКА -> УЧЕНИКИ (Красивые карточки) === -->
+            <div id="sec-stats_students" class="teacher-section">
+                <h2 style="color: #4a2e15; margin-bottom: 20px; text-align: center;">Статистика учеников</h2>
+                
+                <div class="students-grid">
+                    {% for student in students %}
+                    <div class="student-card {{ 'girl' if student.avatar_type == 'girl' else 'boy' }}">
+                        <div class="student-card-avatar">
+                            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        <h3>{{ student.full_name }}</h3>
+                        <!-- Строгая статистика без кнопок -->
+                        <p>Куплено артефактов: {{ student.artifacts_count }}</p>
+                        <p>Собрано животных: {{ student.level }}</p>
+                        <p>Доступно очков: {{ student.current_points }}</p>
+                        <p>Всего потрачено: {{ student.total_spent }}</p>
+                    </div>
+                    {% else %}
+                    <p style="font-size: 20px; text-align: center; width: 100%;">Учеников пока нет.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- === ВКЛАДКА 3: СТАТИСТИКА -> ПОСЛЕДНИЕ ДЕЙСТВИЯ === -->
+            <div id="sec-actions" class="teacher-section">
+                <h2 style="color: #4a2e15; margin-bottom: 20px;">Последние действия</h2>
                 <table class="paint-table">
                     <thead>
                         <tr>
@@ -65,43 +128,10 @@
                 </table>
             </div>
 
-            <!-- РАЗДЕЛ 2: УЧЕНИКИ (Начисление баллов) -->
-            <div id="sec-students" class="teacher-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="color: #4a2e15;">Список учеников</h2>
-                    <div>
-                        <button id="bulkPointsBtn" class="btn" style="background: #4a2e15; color: white;" onclick="openBulkPointsModal()" disabled>Начислить выбранным</button>
-                        <button class="btn btn--secondary" style="border: 2px solid #4a2e15;" onclick="openSettingsModal()">⚙️ Настройки</button>
-                    </div>
-                </div>
-
-                <table class="paint-table" style="font-size: 18px;">
-                    <thead>
-                        <tr>
-                            <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" style="transform: scale(1.5);"></th>
-                            <th>Имя</th>
-                            <th>Баллы</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for student in students %}
-                        <tr>
-                            <td><input type="checkbox" class="student-checkbox" value="{{ student.id }}" onclick="updateBulkButtonState()" style="transform: scale(1.5);"></td>
-                            <td><strong>{{ student.full_name }}</strong></td>
-                            <td>{{ student.current_points }}</td>
-                            <td><button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="openAddPointsModal({{ student.id }}, '{{ student.full_name }}')">Индивидуально</button></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- РАЗДЕЛ 3: МОНСТР И ЗАЯВКИ -->
+            <!-- === ВКЛАДКА 4: МОНСТР И ЗАЯВКИ === -->
             <div id="sec-monster" class="teacher-section">
-                
                 <h2 style="color: #4a2e15; margin-bottom: 20px;">Управление игрой</h2>
-                <div style="display: flex; gap: 15px; margin-bottom: 40px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 40px; flex-wrap: wrap;">
                     <button class="btn" style="background: #c0152f; color: white;" onclick="openMonsterAttackModal()">Атака монстра 👹</button>
                     <button class="btn" style="background: #4a90e2; color: white;" onclick="openCompleteMonsterModal()">Завершить уровень монстра</button>
                     <button class="btn" style="background: #2c8c7c; color: white;" onclick="levelUpClass()">Перевести класс (Уровень+1)</button>
@@ -130,6 +160,98 @@
                 </table>
             </div>
 
+        </div>
+    </div>
+        <div id="addPointsModal" class="modal">
+        <div class="modal-content">
+            <h2 class="mb-24">Начислить баллы</h2>
+            <div id="selectedStudentName" style="margin-bottom: 15px; font-weight: bold;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Событие (за что начисляем?)</label>
+                <select id="workType" class="form-control">
+                    {% for ev in grading_events %}
+                    <!-- Теперь в value мы храним просто название события -->
+                    <option value="{{ ev.name }}">{{ ev.name }}</option>
+                    {% endfor %}
+                    <option value="Ручной ввод">Ручной ввод (другое)</option>
+                </select>
+            </div>
+
+            <!-- Поле ввода баллов теперь всегда видимо -->
+            <div class="form-group">
+                <label class="form-label">Количество баллов</label>
+                <input type="number" class="form-control" id="manualPoints" value="0" min="1" oninput="updatePointsPreview()">
+            </div>
+
+            <div id="pointsPreview" style="margin-bottom: 15px; color: green; font-weight: bold;">Будет начислено: 0 баллов</div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn--primary" onclick="confirmAddPoints()">Подтвердить</button>
+                <button class="btn btn--secondary" onclick="closeModal('addPointsModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === НОВОЕ ОКНО: АТАКА МОНСТРА === -->
+    <div id="monsterAttackModal" class="modal">
+        <div class="modal-content">
+            <h2 class="mb-24" style="color: #c0152f;">Внимание: Атака монстра!</h2>
+            <p>Монстр нанесет урон <strong>всему классу</strong> одновременно. Баллы будут списаны у всех учеников.</p>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label class="form-label">Сколько баллов потеряет каждый ученик?</label>
+                <input type="number" id="attackDamage" class="form-control" min="1" value="10">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" style="background-color: #c0152f; color: white;" onclick="confirmMonsterAttack()">Атаковать!</button>
+                <button class="btn btn--secondary" onclick="closeModal('monsterAttackModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+    <!-- Окно: Завершить уровень монстра -->
+    <div id="completeMonsterModal" class="modal">
+        <div class="modal-content">
+            <h2 class="mb-24">Победа над монстром!</h2>
+            <p>Текущий монстр будет повержен, и класс перейдет к сражению с монстром следующей четверти.</p>
+            <p style="color: #c0152f; font-weight: bold;">Вы уверены?</p>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn--primary" onclick="completeMonster()">Да, завершить</button>
+                <button class="btn btn--secondary" onclick="closeModal('completeMonsterModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+    <!-- Окно настроек событий -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 class="mb-24">Настройки событий</h2>
+            <p style="color: gray; margin-bottom: 15px;">Создайте список частых событий, чтобы не вводить их названия вручную каждый раз.</p>
+            
+            <div class="table-container">
+                <table style="margin-bottom: 20px;">
+                    <tr>
+                        <th>Название события</th>
+                        <th style="width: 100px;">Действие</th>
+                    </tr>
+                    {% for ev in grading_events %}
+                    <tr>
+                        <td>{{ ev.name }}</td>
+                        <td><button class="btn btn--sm btn--outline" onclick="deleteEvent({{ ev.id }})">Удалить</button></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            
+            <h3 style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">Добавить новое событие</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="newEventName" placeholder="Название (напр., Олимпиада)" class="form-control" style="flex: 1;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn--primary" onclick="addEvent()">Добавить</button>
+                <button class="btn btn--secondary" onclick="closeModal('settingsModal')">Закрыть</button>
+            </div>
         </div>
     </div>
     <div id="addPointsModal" class="modal">
@@ -224,17 +346,13 @@
             </div>
         </div>
     </div>
-    <!-- ТУТ ОСТАЮТСЯ ВСЕ ТВОИ МОДАЛЬНЫЕ ОКНА (Просто скопируй их из старого файла) -->
-    <!-- Вставь сюда окна: addPointsModal, settingsModal, monsterAttackModal, completeMonsterModal -->
-
-    <!-- СКРИПТЫ -->
     <script>
-        // Функция для переключения вкладок
+        // Функция переключения вкладок
         function showSection(sectionId) {
             document.querySelectorAll('.teacher-section').forEach(el => el.classList.remove('active'));
             document.getElementById('sec-' + sectionId).classList.add('active');
         }
     </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=15"></script>
 </body>
 </html>

@@ -145,8 +145,20 @@ def teacher_dashboard():
     cursor = conn.cursor(dictionary=True)
 
     # 1. Ученики
-    cursor.execute(
-        'SELECT u.id, u.full_name, sp.current_points FROM users u JOIN student_progress sp ON u.id = sp.user_id WHERE u.role = "student"')
+    # 1. Ученики (ПОЛНАЯ СТАТИСТИКА ДЛЯ КАРТОЧЕК)
+    cursor.execute('''
+            SELECT 
+                u.id, 
+                u.full_name, 
+                u.avatar_type, 
+                sp.current_points, 
+                sp.level, 
+                sp.total_spent,
+                (SELECT COUNT(*) FROM inventory WHERE user_id = u.id) as artifacts_count
+            FROM users u 
+            JOIN student_progress sp ON u.id = sp.user_id 
+            WHERE u.role = "student"
+        ''')
     students = cursor.fetchall()
 
     # 2. Заявки на сеты
