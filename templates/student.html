@@ -41,11 +41,11 @@
                     </div>
 
                     <!-- Монстр -->
-                    <img src="{{ url_for('static', filename='img/monster1.png') }}" class="boss-character">
+                    <img src="{{ url_for('static', filename='img/' ~ (monster.image if monster.image else 'boss.png')) }}" class="boss-character">
                     
                     <div style="text-align: center; margin-top: -20px;">
                         <span class="status" style="background: rgba(255,255,255,0.8); color: black; font-weight: bold; border: 2px solid black;">
-                            {{ monster.name }} (Четверть {{ monster.quarter }})
+                            {{ monster.name }} (Этап {{ monster.quarter }})
                         </span>
                     </div>
                     

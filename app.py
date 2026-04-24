@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import mysql.connector
+import os
 
 app = Flask(__name__)
 app.secret_key = 'super_secret'
@@ -541,15 +542,16 @@ def attack_monster():
         conn.close()
 
 
-# --- API: ДОБАВИТЬ НОВОГО МОНСТРА ---
+# --- API: ДОБАВИТЬ НОВОГО МОНСТРА (С КАРТИНКОЙ) ---
 @app.route('/api/add_monster', methods=['POST'])
 def add_monster():
     if 'user_id' not in session or session['role'] != 'teacher':
         return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
 
-    data = request.json
-    name = data.get('name')
-    max_hp = int(data.get('max_hp', 0))
+    # Теперь мы принимаем данные через request.form, а не request.json, т.к. передаем файл
+    name = request.form.get('name')
+    max_hp = int(request.form.get('max_hp', 0))
+    image_file = request.files.get('image')  # Достаем файл картинки
 
     if not name or max_hp <= 0:
         return jsonify({'status': 'error', 'message': 'Некорректные данные'})
@@ -557,19 +559,36 @@ def add_monster():
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
     try:
-        # Узнаем, какой сейчас максимальный уровень (четверть) у монстров
         cursor.execute('SELECT MAX(quarter) as max_q FROM monsters')
         res = cursor.fetchone()
         next_quarter = (res['max_q'] or 0) + 1
 
-        # Проверяем, есть ли сейчас вообще активный монстр. Если нет — делаем нового сразу активным!
         cursor.execute('SELECT id FROM monsters WHERE is_active = TRUE')
         is_active = False if cursor.fetchone() else True
 
+        # Сначала сохраняем монстра со стандартной картинкой
         cursor.execute('''
-            INSERT INTO monsters (name, quarter, max_hp, current_hp, is_active)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO monsters (name, quarter, max_hp, current_hp, is_active, image)
+            VALUES (%s, %s, %s, %s, %s, 'boss.png')
         ''', (name, next_quarter, max_hp, max_hp, is_active))
+
+        monster_id = cursor.lastrowid  # Получаем ID только что созданного босса
+
+        # Если учитель загрузил файл:
+        if image_file and image_file.filename != '':
+            # Узнаем расширение файла (например, png или jpg)
+            ext = image_file.filename.rsplit('.', 1)[
+                1].lower() if '.' in image_file.filename else 'png'
+            # Придумываем уникальное имя: например, boss_5.png
+            new_filename = f"boss_{monster_id}.{ext}"
+
+            # Сохраняем файл физически в папку static/img
+            filepath = os.path.join('static', 'img', new_filename)
+            image_file.save(filepath)
+
+            # Обновляем запись в БД, вписывая туда новое имя файла
+            cursor.execute('UPDATE monsters SET image = %s WHERE id = %s',
+                           (new_filename, monster_id))
 
         conn.commit()
         return jsonify({'status': 'success'})
@@ -577,6 +596,93 @@ def add_monster():
         conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)})
     finally:
+        conn.close()
+
+
+# --- API: АКТИВИРОВАТЬ БОССА ВРУЧНУЮ ---
+@app.route('/api/activate_monster', methods=['POST'])
+def activate_monster():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+    monster_id = request.json.get('monster_id')
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Сначала выключаем всех боссов
+        cursor.execute('UPDATE monsters SET is_active = FALSE')
+        # Включаем только выбранного
+        cursor.execute('UPDATE monsters SET is_active = TRUE WHERE id = %s', (monster_id,))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# --- API: УДАЛИТЬ БОССА ---
+@app.route('/api/delete_monster', methods=['POST'])
+def delete_monster():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+    monster_id = request.json.get('monster_id')
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('DELETE FROM monsters WHERE id = %s', (monster_id,))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# --- API: РЕДАКТИРОВАТЬ БОССА ---
+@app.route('/api/edit_monster', methods=['POST'])
+def edit_monster():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    # Так как тут может быть картинка, используем form, а не json
+    monster_id = request.form.get('id')
+    name = request.form.get('name')
+    quarter = int(request.form.get('quarter', 1))  # Теперь это просто "Порядковый номер / Этап"
+    max_hp = int(request.form.get('max_hp', 1))
+    current_hp = int(request.form.get('current_hp', max_hp))
+    image_file = request.files.get('image')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Обновляем текстовые данные и ХП
+        cursor.execute('''
+            UPDATE monsters 
+            SET name=%s, quarter=%s, max_hp=%s, current_hp=%s 
+            WHERE id=%s
+        ''', (name, quarter, max_hp, current_hp, monster_id))
+
+        # Если загрузили новую картинку - обновляем и её
+        if image_file and image_file.filename != '':
+            ext = image_file.filename.rsplit('.', 1)[
+                1].lower() if '.' in image_file.filename else 'png'
+            new_filename = f"boss_{monster_id}.{ext}"
+            filepath = os.path.join('static', 'img', new_filename)
+            image_file.save(filepath)
+            cursor.execute('UPDATE monsters SET image = %s WHERE id = %s',
+                           (new_filename, monster_id))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        cursor.close()
         conn.close()
 
 

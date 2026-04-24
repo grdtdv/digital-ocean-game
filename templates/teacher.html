@@ -159,18 +159,23 @@
                         {% for m in monsters %}
                         <tr style="{% if m.is_active %}background-color: rgba(74, 144, 226, 0.2);{% endif %}">
                             <td>№ {{ m.quarter }}</td>
-                            <td><strong>{{ m.name }}</strong></td>
+                            <td>
+                                <strong>{{ m.name }}</strong>
+                                {% if m.is_active %}<span style="color: #c0152f; font-weight: bold; margin-left: 10px;">(АКТИВЕН)</span>{% endif %}
+                            </td>
                             <td>{{ m.current_hp }} / {{ m.max_hp }}</td>
                             <td>
-                                {% if m.is_active %}
-                                    <span class="status" style="background: #4a90e2; color: white;">В бою ⚔️</span>
-                                {% elif m.current_hp <= 0 %}
-                                    <span class="status" style="background: #2c8c7c; color: white;">Повержен 💀</span>
-                                {% else %}
-                                    <span class="status" style="background: rgba(0,0,0,0.1); color: #4a2e15;">Ждет очереди ⏳</span>
-                                {% endif %}
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    {% if not m.is_active %}
+                                        <button class="btn btn--sm" style="background: #2c8c7c; color: white;" onclick="activateMonster({{ m.id }})">Запустить</button>
+                                    {% endif %}
+                                    <button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="openEditMonsterModal({{ m.id }}, '{{ m.name }}', {{ m.quarter }}, {{ m.max_hp }}, {{ m.current_hp }})">Изменить</button>
+                                    <button class="btn btn--sm" style="background: #c0152f; color: white;" onclick="deleteMonster({{ m.id }})">Удалить</button>
+                                </div>
                             </td>
                         </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align: center;">Монстров нет. Создайте нового!</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -400,9 +405,57 @@
                 <p style="font-size: 12px; color: gray; margin-top: 5px;">Босс автоматически встанет в конец очереди.</p>
             </div>
 
+            <!-- === НОВОЕ ПОЛЕ ДЛЯ КАРТИНКИ === -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">Картинка босса (необязательно)</label>
+                <input type="file" id="newMonsterImage" class="form-control" accept="image/png, image/jpeg, image/webp" style="background: white;">
+                <p style="font-size: 12px; color: gray; margin-top: 5px;">Если не выбрать, будет стандартный осьминог.</p>
+            </div>
+            <!-- ============================== -->
+
             <div style="display: flex; gap: 10px; margin-top: 25px;">
                 <button class="btn btn--primary" style="background: #e68161; border: none;" onclick="confirmAddMonster()">Создать</button>
                 <button class="btn btn--secondary" onclick="closeModal('addMonsterModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+    <!-- Окно: Редактировать босса -->
+    <div id="editMonsterModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 class="mb-24" style="color: #4a2e15;">Редактировать босса</h2>
+            
+            <input type="hidden" id="editMonsterId"> <!-- Скрытый ID босса -->
+            
+            <div class="form-group">
+                <label class="form-label">Имя монстра</label>
+                <input type="text" id="editMonsterName" class="form-control">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Макс. ХП</label>
+                    <input type="number" id="editMonsterMaxHp" class="form-control" min="1">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Текущее ХП</label>
+                    <input type="number" id="editMonsterCurrentHp" class="form-control" min="0">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">Порядковый номер (Этап)</label>
+                <input type="number" id="editMonsterQuarter" class="form-control" min="1">
+                <p style="font-size: 12px; color: gray;">Теперь "четверть" - это просто номер этапа.</p>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">Новая картинка (необязательно)</label>
+                <input type="file" id="editMonsterImage" class="form-control" accept="image/png, image/jpeg, image/webp" style="background: white;">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn--primary" style="background: #ff9800; border: none;" onclick="confirmEditMonster()">Сохранить</button>
+                <button class="btn btn--secondary" onclick="closeModal('editMonsterModal')">Отмена</button>
             </div>
         </div>
     </div>

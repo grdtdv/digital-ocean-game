@@ -318,14 +318,26 @@ function openAddMonsterModal() {
 function confirmAddMonster() {
     const name = document.getElementById('newMonsterName').value.trim();
     const hp = parseInt(document.getElementById('newMonsterHp').value);
+    const imageInput = document.getElementById('newMonsterImage');
     
     if (!name) { alert("Введите имя босса!"); return; }
     if (isNaN(hp) || hp <= 0) { alert("ХП должно быть больше нуля!"); return; }
     
+    // Создаем объект FormData для отправки файлов
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('max_hp', hp);
+    
+    // Если картинка выбрана - прикрепляем её
+    if (imageInput && imageInput.files.length > 0) {
+        formData.append('image', imageInput.files[0]);
+    }
+    
+    // Отправляем на сервер
     fetch('/api/add_monster', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, max_hp: hp })
+        // ВНИМАНИЕ: Здесь НЕТ строчки headers! Браузер сам подставит нужные заголовки для файла.
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
@@ -334,6 +346,83 @@ function confirmAddMonster() {
             location.reload();
         } else {
             alert('Ошибка сервера: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Не удалось связаться с сервером.');
+    });
+}
+// --- УПРАВЛЕНИЕ БОССАМИ (АКТИВАЦИЯ, РЕДАКТИРОВАНИЕ, УДАЛЕНИЕ) ---
+
+function activateMonster(id) {
+    if(!confirm("Сделать этого босса активным прямо сейчас? Предыдущий босс уйдет в запас.")) return;
+    
+    fetch('/api/activate_monster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monster_id: id })
+    }).then(res => res.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert('Ошибка: ' + data.message);
+    });
+}
+
+function deleteMonster(id) {
+    if(!confirm("Точно удалить этого босса навсегда? Это действие нельзя отменить.")) return;
+    
+    fetch('/api/delete_monster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monster_id: id })
+    }).then(res => res.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert('Ошибка: ' + data.message);
+    });
+}
+
+function openEditMonsterModal(id, name, quarter, maxHp, currentHp) {
+    // Заполняем форму текущими данными босса
+    document.getElementById('editMonsterId').value = id;
+    document.getElementById('editMonsterName').value = name;
+    document.getElementById('editMonsterQuarter').value = quarter;
+    document.getElementById('editMonsterMaxHp').value = maxHp;
+    document.getElementById('editMonsterCurrentHp').value = currentHp;
+    
+    openModal('editMonsterModal');
+}
+
+function confirmEditMonster() {
+    const id = document.getElementById('editMonsterId').value;
+    const name = document.getElementById('editMonsterName').value.trim();
+    const quarter = parseInt(document.getElementById('editMonsterQuarter').value);
+    const maxHp = parseInt(document.getElementById('editMonsterMaxHp').value);
+    const currentHp = parseInt(document.getElementById('editMonsterCurrentHp').value);
+    const imageInput = document.getElementById('editMonsterImage');
+
+    if (!name) { alert("Введите имя!"); return; }
+    
+    // Формируем пакет данных (с файлом, если он есть)
+    const formData = new FormData();
+    formData.append('id', id);
+    formData.append('name', name);
+    formData.append('quarter', quarter);
+    formData.append('max_hp', maxHp);
+    formData.append('current_hp', currentHp);
+    
+    if (imageInput.files.length > 0) {
+        formData.append('image', imageInput.files[0]);
+    }
+
+    fetch('/api/edit_monster', {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(data => {
+        if (data.status === 'success') {
+            alert('Босс успешно изменен!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.message);
         }
     });
 }
