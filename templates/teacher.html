@@ -129,13 +129,51 @@
             </div>
 
             <!-- === ВКЛАДКА 4: МОНСТР И ЗАЯВКИ === -->
+            <!-- === ВКЛАДКА 4: МОНСТР И ЗАЯВКИ === -->
             <div id="sec-monster" class="teacher-section">
-                <h2 style="color: #4a2e15; margin-bottom: 20px;">Управление игрой</h2>
-                <div style="display: flex; gap: 15px; margin-bottom: 40px; flex-wrap: wrap;">
-                    <button class="btn" style="background: #c0152f; color: white;" onclick="openMonsterAttackModal()">Атака монстра 👹</button>
-                    <button class="btn" style="background: #4a90e2; color: white;" onclick="openCompleteMonsterModal()">Завершить уровень монстра</button>
-                    <button class="btn" style="background: #2c8c7c; color: white;" onclick="levelUpClass()">Перевести класс (Уровень+1)</button>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: #4a2e15; margin: 0;">Управление боссами</h2>
+                    <button class="btn" style="background: #e68161; color: white; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="openAddMonsterModal()">
+                        ➕ Создать босса
+                    </button>
                 </div>
+
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="btn" style="background: #c0152f; color: white;" onclick="openMonsterAttackModal()">Атака монстра 👹</button>
+                    <button class="btn" style="background: #4a90e2; color: white;" onclick="openCompleteMonsterModal()">Убить текущего (Скипнуть)</button>
+                    <button class="btn" style="background: #2c8c7c; color: white;" onclick="levelUpClass()">Уровень класса +1</button>
+                </div>
+
+                <!-- ТАБЛИЦА МОНСТРОВ -->
+                <table class="paint-table" style="font-size: 16px; margin-bottom: 40px;">
+                    <thead>
+                        <tr>
+                            <th>Уровень</th>
+                            <th>Имя босса</th>
+                            <th>Здоровье</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in monsters %}
+                        <tr style="{% if m.is_active %}background-color: rgba(74, 144, 226, 0.2);{% endif %}">
+                            <td>№ {{ m.quarter }}</td>
+                            <td><strong>{{ m.name }}</strong></td>
+                            <td>{{ m.current_hp }} / {{ m.max_hp }}</td>
+                            <td>
+                                {% if m.is_active %}
+                                    <span class="status" style="background: #4a90e2; color: white;">В бою ⚔️</span>
+                                {% elif m.current_hp <= 0 %}
+                                    <span class="status" style="background: #2c8c7c; color: white;">Повержен 💀</span>
+                                {% else %}
+                                    <span class="status" style="background: rgba(0,0,0,0.1); color: #4a2e15;">Ждет очереди ⏳</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
 
                 <h2 style="color: #4a2e15; margin-bottom: 20px;">Заявки на сеты</h2>
                 <table class="paint-table" style="font-size: 18px;">
@@ -343,6 +381,28 @@
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn--primary" onclick="addEvent()">Добавить</button>
                 <button class="btn btn--secondary" onclick="closeModal('settingsModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+    <!-- Окно: Создать нового монстра -->
+    <div id="addMonsterModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2 class="mb-24" style="color: #4a2e15;">Создать нового босса</h2>
+            
+            <div class="form-group">
+                <label class="form-label">Имя монстра (например, 'Кракен')</label>
+                <input type="text" id="newMonsterName" class="form-control" placeholder="Имя">
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">Здоровье (ХП)</label>
+                <input type="number" id="newMonsterHp" class="form-control" min="1" value="300">
+                <p style="font-size: 12px; color: gray; margin-top: 5px;">Босс автоматически встанет в конец очереди.</p>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn--primary" style="background: #e68161; border: none;" onclick="confirmAddMonster()">Создать</button>
+                <button class="btn btn--secondary" onclick="closeModal('addMonsterModal')">Отмена</button>
             </div>
         </div>
     </div>

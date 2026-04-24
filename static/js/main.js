@@ -308,3 +308,32 @@ function levelUpClass() {
         }
     });
 }
+// --- СОЗДАНИЕ НОВОГО БОССА ---
+function openAddMonsterModal() {
+    document.getElementById('newMonsterName').value = '';
+    document.getElementById('newMonsterHp').value = '300';
+    openModal('addMonsterModal');
+}
+
+function confirmAddMonster() {
+    const name = document.getElementById('newMonsterName').value.trim();
+    const hp = parseInt(document.getElementById('newMonsterHp').value);
+    
+    if (!name) { alert("Введите имя босса!"); return; }
+    if (isNaN(hp) || hp <= 0) { alert("ХП должно быть больше нуля!"); return; }
+    
+    fetch('/api/add_monster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, max_hp: hp })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Босс успешно добавлен в очередь!');
+            location.reload();
+        } else {
+            alert('Ошибка сервера: ' + data.message);
+        }
+    });
+}

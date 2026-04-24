@@ -17,35 +17,51 @@ def get_db():
     return mysql.connector.connect(**db_config)
 
 
-# --- ЛОГИН ---
+# --- ЛОГИН (ОБНОВЛЕННЫЙ С ПАРОЛЕМ ДЛЯ УЧЕНИКА) ---
 @app.route('/', methods=['GET', 'POST'])
 def login():
     msg = ''
     if request.method == 'POST':
         role = request.form.get('role')
         username = request.form.get('username')
+        password = request.form.get('password')  # Теперь пароль обязателен для всех
+
         conn = get_db()
         cursor = conn.cursor(dictionary=True)
+        user = None
 
         if role == 'teacher':
-            password = request.form.get('password')
             cursor.execute(
                 'SELECT * FROM users WHERE username = %s AND password = %s AND role="teacher"',
                 (username, password))
             user = cursor.fetchone()
         else:
+            # Ищем ученика по имени
             cursor.execute('SELECT * FROM users WHERE username = %s AND role="student"', (username,))
-            user = cursor.fetchone()
-            if not user:
+            existing_student = cursor.fetchone()
+
+            if not existing_student:
+                # РЕГИСТРАЦИЯ: ученика нет, создаем нового с введенным паролем
                 gender = request.form.get('gender', 'boy')
-                cursor.execute(
-                    'INSERT INTO users (username, password, role, avatar_type, full_name) VALUES (%s, "", "student", %s, %s)',
-                    (username, gender, username))
+                cursor.execute('''
+                    INSERT INTO users (username, password, role, avatar_type, full_name) 
+                    VALUES (%s, %s, "student", %s, %s)
+                ''', (username, password, gender, username))
+
                 user_id = cursor.lastrowid
                 cursor.execute('INSERT INTO student_progress (user_id) VALUES (%s)', (user_id,))
                 conn.commit()
+
+                # Получаем только что созданного пользователя
                 cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
                 user = cursor.fetchone()
+            else:
+                # ВХОД: ученик есть, проверяем совпадает ли пароль
+                if existing_student['password'] == password:
+                    user = existing_student
+                else:
+                    msg = 'Неверный пароль!'  # Пароль не подошел, user остается None
+
         cursor.close()
         conn.close()
 
@@ -56,8 +72,9 @@ def login():
             session['role'] = user['role']
             session['full_name'] = user['full_name']
             return redirect('/teacher' if user['role'] == 'teacher' else '/student')
-        else:
-            msg = 'Ошибка входа'
+        elif not msg:
+            msg = 'Неверный логин или пароль!'
+
     return render_template('login.html', msg=msg)
 
 
@@ -187,13 +204,18 @@ def teacher_dashboard():
     for act in recent_actions:
         if act['date']:
             act['date'] = act['date'].strftime('%d.%m.%y')
+        # 5. СПИСОК ВСЕХ МОНСТРОВ (ДЛЯ УПРАВЛЕНИЯ)
 
+    cursor.execute('SELECT * FROM monsters ORDER BY quarter ASC')
+    all_monsters = cursor.fetchall()
     conn.close()
     return render_template('teacher.html',
                            students=students,
                            pending_requests=pending_requests,
                            grading_events=grading_events,
-                           recent_actions=recent_actions)  # Передаем действия в HTML
+                           recent_actions=recent_actions,
+                           monsters=all_monsters)
+
 
 # --- API ---
 @app.route('/api/buy_artifact', methods=['POST'])
@@ -517,6 +539,47 @@ def attack_monster():
         return jsonify({'status': 'error', 'message': str(e)})
     finally:
         conn.close()
+
+
+# --- API: ДОБАВИТЬ НОВОГО МОНСТРА ---
+@app.route('/api/add_monster', methods=['POST'])
+def add_monster():
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    data = request.json
+    name = data.get('name')
+    max_hp = int(data.get('max_hp', 0))
+
+    if not name or max_hp <= 0:
+        return jsonify({'status': 'error', 'message': 'Некорректные данные'})
+
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Узнаем, какой сейчас максимальный уровень (четверть) у монстров
+        cursor.execute('SELECT MAX(quarter) as max_q FROM monsters')
+        res = cursor.fetchone()
+        next_quarter = (res['max_q'] or 0) + 1
+
+        # Проверяем, есть ли сейчас вообще активный монстр. Если нет — делаем нового сразу активным!
+        cursor.execute('SELECT id FROM monsters WHERE is_active = TRUE')
+        is_active = False if cursor.fetchone() else True
+
+        cursor.execute('''
+            INSERT INTO monsters (name, quarter, max_hp, current_hp, is_active)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (name, next_quarter, max_hp, max_hp, is_active))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
 @app.route('/logout')
 def logout():
     session.clear()
