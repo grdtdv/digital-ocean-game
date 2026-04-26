@@ -29,8 +29,9 @@
                         <li onclick="showSection('monster')">- Данные и Управление</li>
                     </ul>
                 </li>
+                <li onclick="showSection('tasks')">• Доп. задания</li>
             </ul>
-            
+                
             <br><br><br>
             <a href="/logout" class="btn" style="background: transparent; border: 2px solid #4a2e15; color: #4a2e15; font-weight: bold; border-radius: 20px; padding: 10px 20px;">🚪 Выйти</a>
         </div>
@@ -202,7 +203,29 @@
                     </tbody>
                 </table>
             </div>
-
+            <!-- === ВКЛАДКА 5: ДОП ЗАДАНИЯ === -->
+            <div id="sec-tasks" class="teacher-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #4a2e15;">Дополнительные задания</h2>
+        <button class="btn" style="background: #2c8c7c; color: white;" onclick="openModal('addTaskModal')">➕ Создать задание</button>
+    </div>
+    <table class="paint-table">
+        <thead>
+            <tr><th>Название</th><th>Награда</th><th>Ответ</th></tr>
+        </thead>
+        <tbody>
+            {% for t in tasks %}
+            <tr>
+                <td><strong>{{ t.title }}</strong></td>
+                <td>+{{ t.reward_points }}</td>
+                <td>{{ t.correct_answer }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" style="text-align: center;">Заданий пока нет</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
         </div>
     </div>
         <div id="addPointsModal" class="modal">
@@ -459,6 +482,21 @@
             </div>
         </div>
     </div>
+    <!-- Модалка добавления задания -->
+<div id="addTaskModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <h2 class="mb-24" style="color: #4a2e15;">Новое задание</h2>
+        <div class="form-group"><label class="form-label">Название</label><input type="text" id="newTaskTitle" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Текст задания</label><textarea id="newTaskContent" class="form-control" rows="3"></textarea></div>
+        <div class="form-group"><label class="form-label">Правильный ответ</label><input type="text" id="newTaskAnswer" class="form-control" placeholder="Например: 42"></div>
+        <div class="form-group"><label class="form-label">Награда (баллы)</label><input type="number" id="newTaskPoints" class="form-control" value="50"></div>
+        <div class="form-group"><label class="form-label">Картинка (необязательно)</label><input type="file" id="newTaskImage" class="form-control" accept="image/*" style="background: white;"></div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn btn--primary" style="background: #2c8c7c; border: none;" onclick="confirmAddTask()">Создать</button>
+            <button class="btn btn--secondary" onclick="closeModal('addTaskModal')">Отмена</button>
+        </div>
+    </div>
+</div>
     <script>
         // Функция переключения вкладок
         function showSection(sectionId) {
@@ -466,6 +504,6 @@
             document.getElementById('sec-' + sectionId).classList.add('active');
         }
     </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=15"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=999"></script>
 </body>
 </html>

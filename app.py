@@ -143,7 +143,12 @@ def student_dashboard():
             'total': total
         })
     # --------------------
-
+    # Грузим только те задания, которые ученик еще НЕ решил
+    cursor.execute('''
+        SELECT * FROM extra_tasks 
+        WHERE id NOT IN (SELECT task_id FROM completed_tasks WHERE student_id = %s)
+    ''', (session['user_id'],))
+    active_tasks = cursor.fetchall()
     conn.close()
 
     return render_template('student.html',
@@ -152,7 +157,8 @@ def student_dashboard():
                            artifacts=artifacts,
                            inventory_ids=inventory_ids,
                            my_inventory=my_inventory,
-                           sets_data=sets_data)  # Передаем сеты в шаблон
+                           sets_data=sets_data,
+                           active_tasks=active_tasks)  # Передаем сеты в шаблон
 
 
 # --- КАБИНЕТ УЧИТЕЛЯ ---
@@ -209,13 +215,17 @@ def teacher_dashboard():
 
     cursor.execute('SELECT * FROM monsters ORDER BY quarter ASC')
     all_monsters = cursor.fetchall()
+    # Грузим все задания для админки
+    cursor.execute('SELECT * FROM extra_tasks ORDER BY created_at DESC')
+    all_tasks = cursor.fetchall()
     conn.close()
     return render_template('teacher.html',
                            students=students,
                            pending_requests=pending_requests,
                            grading_events=grading_events,
                            recent_actions=recent_actions,
-                           monsters=all_monsters)
+                           monsters=all_monsters,
+                           tasks=all_tasks)
 
 
 # --- API ---
@@ -685,6 +695,86 @@ def edit_monster():
         cursor.close()
         conn.close()
 
+
+# --- API: УЧИТЕЛЬ ДОБАВЛЯЕТ ДОП. ЗАДАНИЕ ---
+@app.route('/api/add_task', methods=['POST'])
+def add_task():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    title = request.form.get('title')
+    content = request.form.get('content')
+    answer = request.form.get('answer', '').strip().lower()  # Ответ храним в нижнем регистре
+    points = int(request.form.get('points', 0))
+    image_file = request.files.get('image')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            'INSERT INTO extra_tasks (title, content, correct_answer, reward_points) VALUES (%s, %s, %s, %s)',
+            (title, content, answer, points))
+        task_id = cursor.lastrowid
+
+        # Если прикрепили картинку
+        if image_file and image_file.filename != '':
+            ext = image_file.filename.rsplit('.', 1)[1].lower()
+            new_filename = f"task_{task_id}.{ext}"
+            filepath = os.path.join('static', 'img', 'tasks', new_filename)
+            image_file.save(filepath)
+            cursor.execute('UPDATE extra_tasks SET image = %s WHERE id = %s',
+                           (new_filename, task_id))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+# --- API: УЧЕНИК РЕШАЕТ ЗАДАНИЕ ---
+@app.route('/api/submit_task', methods=['POST'])
+def submit_task():
+    if 'user_id' not in session or session['role'] != 'student': return jsonify(
+        {'status': 'error'}), 403
+
+    task_id = request.json.get('task_id')
+    user_answer = request.json.get('answer',
+                                   '').strip().lower()  # Сравниваем без учета регистра и пробелов
+    user_id = session['user_id']
+
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute('SELECT * FROM extra_tasks WHERE id = %s', (task_id,))
+        task = cursor.fetchone()
+        if not task: return jsonify({'status': 'error', 'message': 'Задание не найдено'})
+
+        if user_answer == task['correct_answer']:
+            # 1. Начисляем баллы
+            cursor.execute(
+                'UPDATE student_progress SET current_points = current_points + %s, total_earned = total_earned + %s WHERE user_id = %s',
+                (task['reward_points'], task['reward_points'], user_id))
+            # 2. Отмечаем как решенное
+            cursor.execute('INSERT INTO completed_tasks (student_id, task_id) VALUES (%s, %s)',
+                           (user_id, task_id))
+            # 3. Пишем в историю для учителя
+            cursor.execute(
+                'INSERT INTO transactions (student_id, amount, reason) VALUES (%s, %s, %s)',
+                (user_id, task['reward_points'], f"Решено задание: {task['title']}"))
+
+            conn.commit()
+            return jsonify({'status': 'success',
+                            'message': f"Верно! Начислено {task['reward_points']} баллов!"})
+        else:
+            return jsonify({'status': 'error', 'message': 'Неверный ответ. Попробуй еще раз!'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
 
 @app.route('/logout')
 def logout():

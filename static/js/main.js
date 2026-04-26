@@ -426,3 +426,75 @@ function confirmEditMonster() {
         }
     });
 }
+/* ==========================================
+   6. ДОПОЛНИТЕЛЬНЫЕ ЗАДАНИЯ
+   ========================================== */
+
+// --- УЧИТЕЛЬ ---
+function confirmAddTask() {
+    const title = document.getElementById('newTaskTitle').value.trim();
+    const content = document.getElementById('newTaskContent').value.trim();
+    const answer = document.getElementById('newTaskAnswer').value.trim();
+    const points = parseInt(document.getElementById('newTaskPoints').value);
+    const img = document.getElementById('newTaskImage');
+
+    if (!title || !content || !answer) { alert("Заполните все текстовые поля!"); return; }
+    if (isNaN(points) || points <= 0) { alert("Укажите награду!"); return; }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('answer', answer);
+    formData.append('points', points);
+    if(img.files.length > 0) formData.append('image', img.files[0]);
+
+    fetch('/api/add_task', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') { alert("Задание создано!"); location.reload(); }
+        else alert("Ошибка: " + data.message);
+    });
+}
+
+// --- УЧЕНИК ---
+function openTaskModal(id, title, content, image, points) {
+    document.getElementById('taskModalId').value = id;
+    document.getElementById('taskModalTitle').textContent = title;
+    document.getElementById('taskModalContent').textContent = content;
+    document.getElementById('taskModalPoints').textContent = `Награда: +${points} баллов!`;
+    document.getElementById('taskAnswerInput').value = '';
+    
+    const imgContainer = document.getElementById('taskModalImageContainer');
+    const imgEl = document.getElementById('taskModalImage');
+    
+    if(image && image !== 'None' && image !== '') {
+        imgEl.src = '/static/img/tasks/' + image;
+        imgContainer.style.display = 'block';
+    } else {
+        imgContainer.style.display = 'none';
+    }
+    
+    openModal('taskModal');
+}
+
+function submitTaskAnswer() {
+    const taskId = document.getElementById('taskModalId').value;
+    const answer = document.getElementById('taskAnswerInput').value.trim();
+    
+    if(!answer) { alert('Введи ответ!'); return; }
+
+    fetch('/api/submit_task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId, answer: answer })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            alert(data.message); // "Верно! Начислено X баллов!"
+            location.reload();   // Перезагрузка уберет решенный пузырек
+        } else {
+            alert(data.message); // "Неверный ответ..."
+        }
+    });
+}
