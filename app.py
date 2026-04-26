@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import mysql.connector
 import os
-
+import random
+from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = 'super_secret'
 
@@ -51,6 +52,7 @@ def login():
 
                 user_id = cursor.lastrowid
                 cursor.execute('INSERT INTO student_progress (user_id) VALUES (%s)', (user_id,))
+                cursor.execute('INSERT INTO user_shop_state (user_id) VALUES (%s)', (user_id,))
                 conn.commit()
 
                 # Получаем только что созданного пользователя
@@ -79,86 +81,189 @@ def login():
     return render_template('login.html', msg=msg)
 
 
+def refresh_user_shop(user_id, cursor):
+    # 1. Получаем состояние
+    cursor.execute('SELECT * FROM user_shop_state WHERE user_id = %s', (user_id,))
+    state = cursor.fetchone()
+    if not state:
+        cursor.execute('INSERT INTO user_shop_state (user_id) VALUES (%s)', (user_id,))
+        cursor.execute('SELECT * FROM user_shop_state WHERE user_id = %s', (user_id,))
+        state = cursor.fetchone()
+
+    # 2. Удаляем все НЕзакрепленные предметы с витрины
+    cursor.execute('DELETE FROM user_shop_slots WHERE user_id = %s AND is_pinned = FALSE',
+                   (user_id,))
+
+    # Смотрим, сколько слотов свободно
+    cursor.execute('SELECT artifact_id FROM user_shop_slots WHERE user_id = %s', (user_id,))
+    pinned_items = [row['artifact_id'] for row in cursor.fetchall()]
+    slots_to_fill = 4 - len(pinned_items)
+
+    # Получаем инвентарь (чтобы не предлагать купленное)
+    cursor.execute('SELECT artifact_id FROM inventory WHERE user_id = %s', (user_id,))
+    owned_items = [row['artifact_id'] for row in cursor.fetchall()]
+    exclude_ids = pinned_items + owned_items
+
+    # 3. ЛОГИКА ГАРАНТА
+    desired_id = state['desired_artifact_id']
+    desired_spawned_now = False
+
+    if desired_id and desired_id not in owned_items and slots_to_fill > 0:
+        if state['pity_counter'] >= 2:
+            # Выдаем гарант со скидкой!
+            cursor.execute(
+                'INSERT INTO user_shop_slots (user_id, artifact_id, has_discount) VALUES (%s, %s, TRUE)',
+                (user_id, desired_id))
+            cursor.execute(
+                'UPDATE user_shop_state SET pity_counter = 0, desired_artifact_id = NULL WHERE user_id = %s',
+                (user_id,))
+            slots_to_fill -= 1
+            exclude_ids.append(desired_id)
+            desired_spawned_now = True
+
+    # 4. ЗАПОЛНЯЕМ СЛОТЫ РАНДОМОМ
+    cursor.execute('SELECT id, rarity FROM artifacts')
+    all_arts = cursor.fetchall()
+
+    for _ in range(slots_to_fill):
+        # Шансы: 50% Обычный, 30% Особый, 20% Эпический
+        roll = random.randint(1, 100)
+        target_rarity = 'обычный' if roll <= 50 else ('особый' if roll <= 80 else 'эпический')
+
+        # Ищем подходящие артефакты этой редкости, которых еще нет
+        available = [a['id'] for a in all_arts if
+                     a['rarity'] == target_rarity and a['id'] not in exclude_ids]
+
+        # Если нужной редкости нет, берем любой доступный
+        if not available:
+            available = [a['id'] for a in all_arts if a['id'] not in exclude_ids]
+
+        if available:
+            chosen_id = random.choice(available)
+            cursor.execute('INSERT INTO user_shop_slots (user_id, artifact_id) VALUES (%s, %s)',
+                           (user_id, chosen_id))
+            exclude_ids.append(chosen_id)
+            if chosen_id == desired_id:
+                desired_spawned_now = True
+
+    # 5. ОБНОВЛЯЕМ СЧЕТЧИК ГАРАНТА И ТАЙМЕР
+    # Вычисляем следующее 16:00 через 2 дня
+    now = datetime.now()
+    next_refresh = (now + timedelta(days=2)).replace(hour=16, minute=0, second=0, microsecond=0)
+
+    new_pity = 0 if desired_spawned_now else (state['pity_counter'] + 1 if desired_id else 0)
+    cursor.execute(
+        'UPDATE user_shop_state SET next_refresh = %s, pity_counter = %s WHERE user_id = %s',
+        (next_refresh, new_pity, user_id))
+# --- КАБИНЕТ УЧЕНИКА ---
 # --- КАБИНЕТ УЧЕНИКА ---
 @app.route('/student')
 def student_dashboard():
-    if 'user_id' not in session or session['role'] != 'student': return redirect('/')
+    if 'user_id' not in session or session['role'] != 'student':
+        return redirect('/')
 
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
+    user_id = session['user_id']
 
-    cursor.execute('SELECT * FROM student_progress WHERE user_id = %s', (session['user_id'],))
+    # 1. ДАННЫЕ УЧЕНИКА
+    cursor.execute('SELECT * FROM student_progress WHERE user_id = %s', (user_id,))
     student_data = cursor.fetchone()
 
+    # 2. АКТИВНЫЙ МОНСТР
     cursor.execute('SELECT * FROM monsters WHERE is_active = TRUE LIMIT 1')
     monster = cursor.fetchone()
-    if not monster:  # На случай, если в базе пусто
+    if not monster:
         monster = {'name': 'Нет монстра', 'current_hp': 0, 'max_hp': 100, 'quarter': 0}
 
-    cursor.execute('SELECT * FROM artifacts')
-    artifacts = cursor.fetchall()
-
-    cursor.execute('SELECT artifact_id FROM inventory WHERE user_id = %s', (session['user_id'],))
+    # 3. ИНВЕНТАРЬ (Мои артефакты)
+    cursor.execute('SELECT artifact_id FROM inventory WHERE user_id = %s', (user_id,))
     inventory_ids = [row['artifact_id'] for row in cursor.fetchall()]
 
     cursor.execute('''
         SELECT a.* FROM artifacts a
         JOIN inventory i ON a.id = i.artifact_id
         WHERE i.user_id = %s
-    ''', (session['user_id'],))
+    ''', (user_id,))
     my_inventory = cursor.fetchall()
 
-    # --- ЛОГИКА СЕТОВ ---
-    # 1. Считаем, сколько всего предметов в каждом сете существует
+    # 4. ЛОГИКА СЕТОВ АРТЕФАКТОВ
     cursor.execute('SELECT set_name, COUNT(*) as total_items FROM artifacts GROUP BY set_name')
     set_requirements = {row['set_name']: row['total_items'] for row in cursor.fetchall()}
 
-    # 2. Считаем, сколько предметов из сета купил ученик
     cursor.execute('''
         SELECT a.set_name, COUNT(i.id) as owned_items 
         FROM artifacts a 
         JOIN inventory i ON a.id = i.artifact_id 
         WHERE i.user_id = %s 
         GROUP BY a.set_name
-    ''', (session['user_id'],))
+    ''', (user_id,))
     owned_sets_info = {row['set_name']: row['owned_items'] for row in cursor.fetchall()}
 
-    # 3. Проверяем статусы заявок на сеты
-    cursor.execute('SELECT set_name, status FROM set_requests WHERE student_id = %s',
-                   (session['user_id'],))
+    cursor.execute('SELECT set_name, status FROM set_requests WHERE student_id = %s', (user_id,))
     requests_info = {row['set_name']: row['status'] for row in cursor.fetchall()}
 
-    # Собираем финальный массив сетов для HTML
     sets_data = []
     for set_name, total in set_requirements.items():
         owned = owned_sets_info.get(set_name, 0)
-        is_complete = (owned == total)
         status = requests_info.get(set_name, None)
-
         sets_data.append({
             'name': set_name,
-            'is_complete': is_complete,
+            'is_complete': (owned == total),
             'status': status,
             'owned': owned,
             'total': total
         })
-    # --------------------
-    # Грузим только те задания, которые ученик еще НЕ решил
+
+    # 5. ДОП. ЗАДАНИЯ
     cursor.execute('''
         SELECT * FROM extra_tasks 
         WHERE id NOT IN (SELECT task_id FROM completed_tasks WHERE student_id = %s)
-    ''', (session['user_id'],))
+    ''', (user_id,))
     active_tasks = cursor.fetchall()
+
+    # 6. МАГАЗИН (НОВЫЙ ГАЧА-МЕХАНИЗМ)
+    cursor.execute('SELECT * FROM artifacts')
+    all_artifacts = cursor.fetchall()  # Нужно для выпадающего списка гарантов
+
+    cursor.execute('SELECT * FROM user_shop_state WHERE user_id = %s', (user_id,))
+    shop_state = cursor.fetchone()
+
+    # Обновляем, если пришло время или магазина еще нет
+    if not shop_state or shop_state['next_refresh'] <= datetime.now():
+        refresh_user_shop(user_id, cursor)
+        conn.commit()
+        cursor.execute('SELECT * FROM user_shop_state WHERE user_id = %s', (user_id,))
+        shop_state = cursor.fetchone()
+
+    # Загружаем 4 товара с витрины
+    cursor.execute('''
+        SELECT a.*, s.is_pinned, s.has_discount 
+        FROM user_shop_slots s
+        JOIN artifacts a ON s.artifact_id = a.id
+        WHERE s.user_id = %s
+    ''', (user_id,))
+    shop_items = cursor.fetchall()
+
+    # Считаем скидку 10%, если она выпала по гаранту
+    for item in shop_items:
+        if item['has_discount']:
+            item['old_price'] = item['price']
+            item['price'] = int(item['price'] * 0.9)
+
     conn.close()
 
+    # Отправляем ВСЕ переменные в HTML (их стало много!)
     return render_template('student.html',
                            student=student_data,
                            monster=monster,
-                           artifacts=artifacts,
+                           artifacts=all_artifacts,
                            inventory_ids=inventory_ids,
                            my_inventory=my_inventory,
                            sets_data=sets_data,
-                           active_tasks=active_tasks)  # Передаем сеты в шаблон
+                           active_tasks=active_tasks,
+                           shop_state=shop_state,
+                           shop_items=shop_items)  # Передаем сеты в шаблон
 
 
 # --- КАБИНЕТ УЧИТЕЛЯ ---
@@ -776,6 +881,83 @@ def submit_task():
     finally:
         conn.close()
 
+
+# ==========================================
+# --- API: МАГАЗИН (ГАЧА-МЕХАНИКИ) ---
+# ==========================================
+
+@app.route('/api/toggle_pin', methods=['POST'])
+def toggle_pin():
+    if 'user_id' not in session or session['role'] != 'student':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    artifact_id = request.json.get('artifact_id')
+    user_id = session['user_id']
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Проверяем, не пытается ли он закрепить артефакт, который уже стоит в гаранте
+        cursor.execute('SELECT desired_artifact_id FROM user_shop_state WHERE user_id = %s',
+                       (user_id,))
+        state = cursor.fetchone()
+
+        if state and str(state['desired_artifact_id']) == str(artifact_id):
+            return jsonify({'status': 'error',
+                            'message': 'Нельзя закрепить артефакт, который выбран как гарант!'})
+
+        # Меняем статус закрепления на противоположный (был закреплен - открепится, и наоборот)
+        cursor.execute(
+            'UPDATE user_shop_slots SET is_pinned = NOT is_pinned WHERE user_id = %s AND artifact_id = %s',
+            (user_id, artifact_id))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/set_desired', methods=['POST'])
+def set_desired():
+    if 'user_id' not in session or session['role'] != 'student':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+
+    artifact_id = request.json.get('artifact_id')
+    # Если прислали пустую строку (выбрали "Не выбран"), превращаем в NULL для базы
+    if not artifact_id:
+        artifact_id = None
+
+    user_id = session['user_id']
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Ставим гарант и сбрасываем счетчик неудач
+        cursor.execute(
+            'UPDATE user_shop_state SET desired_artifact_id = %s, pity_counter = 0 WHERE user_id = %s',
+            (artifact_id, user_id))
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/force_refresh', methods=['POST'])
+def force_refresh():
+    if 'user_id' not in session or session['role'] != 'student':
+        return jsonify({'status': 'error'}), 403
+
+    # ЧИТ-КНОПКА: Перематываем таймер магазина в 2000 год, чтобы при обновлении страницы он сработал
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE user_shop_state SET next_refresh = "2000-01-01" WHERE user_id = %s',
+                   (session['user_id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
 @app.route('/logout')
 def logout():
     session.clear()

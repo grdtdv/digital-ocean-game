@@ -159,28 +159,56 @@
                 </div>
 
                 <!-- ТОВАРЫ -->
+                <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+                    <h3 style="margin: 0; color: #2c8c7c;">Обновление витрины: {{ shop_state.next_refresh.strftime('%d.%m %H:%M') }}</h3>
+                    <button class="btn btn--sm mt-16" style="background: #ff9800; color: white;" onclick="forceRefresh()">🔄 Обновить сейчас (Чит для теста)</button>
+                    
+                    <hr style="margin: 15px 0; border: 1px solid #ddd;">
+                    
+                    <h4 style="color: #c0152f; margin-bottom: 10px;">Гарантированный артефакт</h4>
+                    <select id="desiredArtifact" class="form-control" style="width: 200px; display: inline-block;">
+                        <option value="">Не выбран</option>
+                        {% for a in artifacts %}
+                            {% if a.id not in inventory_ids %}
+                                <option value="{{ a.id }}" {% if shop_state.desired_artifact_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn--sm" style="background: #2c8c7c; color: white;" onclick="setDesired()">Установить (0/2)</button>
+                    <p style="font-size: 12px; color: gray; margin-top: 5px;">Шкала гаранта: {{ shop_state.pity_counter }} / 2 неудач</p>
+                </div>
+
+                <!-- ТОВАРЫ -->
                 <div class="artifact-grid">
-                    {% for item in artifacts %}
-                    <div class="artifact-item" data-mylevel="{{ 'true' if item.min_level <= student.level else 'false' }}">
+                    {% for item in shop_items %}
+                    <div class="artifact-item" style="position: relative; {% if item.rarity == 'эпический' %}border: 3px solid #b300ff; box-shadow: 0 0 20px #b300ff;{% elif item.rarity == 'особый' %}border: 3px solid #00d5ff;{% endif %}">
                         
-                        <!-- ВОТ ЭТА НОВАЯ СТРОЧКА ДЛЯ КАРТИНКИ АРТЕФАКТА -->
-                        <img src="{{ url_for('static', filename='img/artifacts/' ~ item.id ~ '.png') }}" 
-                             alt="{{ item.name }}" 
-                             style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.5));">
+                        <!-- Кнопка ЗААКРЕПИТЬ -->
+                        <div style="position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 24px; filter: drop-shadow(2px 2px 2px #000);" onclick="togglePin({{ item.id }})">
+                            {% if item.is_pinned %}⚓{% else %}🔓{% endif %}
+                        </div>
+
+                        <img src="{{ url_for('static', filename='img/artifacts/' ~ item.id ~ '.png') }}" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.5));">
+                        <h4 style="margin-bottom: 5px;">{{ item.name }}</h4>
+                        <p style="font-size: 12px; color: {% if item.rarity == 'эпический' %}#e894ff{% elif item.rarity == 'особый' %}#94e8ff{% else %}white{% endif %}; margin-bottom: 0; font-weight: bold;">{{ item.rarity|upper }}</p>
                         
-                        <h4 style="margin-bottom: 8px;">{{ item.name }}</h4>
-                        <p style="font-size: 12px; margin-bottom: 0;">Уровень: {{ item.min_level }}</p>
+                        <div class="price-text" style="font-size: 30px;">
+                            {% if item.has_discount %}
+                                <span style="text-decoration: line-through; color: gray; font-size: 16px;">{{ item.old_price }}</span> 
+                                <span style="color: #bce523;">{{ item.price }}</span>
+                            {% else %}
+                                {{ item.price }}
+                            {% endif %}
+                        </div>
                         
-                        <div class="price-text">{{ item.price }}</div>
-                        
-                        {% if item.id in inventory_ids %}
-                            <button class="btn btn--full-width" disabled style="background: rgba(0,0,0,0.5); color: #fff;">Уже куплено</button>
-                        {% elif student.current_points < item.price %}
+                        {% if student.current_points < item.price %}
                             <button class="btn btn--full-width" disabled style="background: rgba(0,0,0,0.5); color: #ccc;">Мало баллов</button>
                         {% else %}
                             <button class="btn btn--primary btn--full-width" style="background: #2c8c7c; border: 2px solid #fff;" onclick="buyArtifact({{ item.id }})">Купить</button>
                         {% endif %}
                     </div>
+                    {% else %}
+                    <h3 style="color: white; width: 100%; text-align: center;">В магазине пусто. Ждите обновления!</h3>
                     {% endfor %}
                 </div>
 

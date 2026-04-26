@@ -55,7 +55,34 @@ function filterShop(type) {
     event.target.classList.remove('btn--secondary');
     event.target.classList.add('btn--primary');
 }
+function togglePin(artifactId) {
+    fetch('/api/toggle_pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artifact_id: artifactId })
+    }).then(res => res.json()).then(data => {
+        if(data.status === 'success') location.reload();
+        else alert(data.message);
+    });
+}
 
+function setDesired() {
+    const artifactId = document.getElementById('desiredArtifact').value;
+    if(!artifactId) return;
+    
+    fetch('/api/set_desired', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artifact_id: artifactId })
+    }).then(res => res.json()).then(data => {
+        if(data.status === 'success') { alert('Гарант установлен!'); location.reload(); }
+        else alert(data.message);
+    });
+}
+
+function forceRefresh() {
+    fetch('/api/force_refresh', {method: 'POST'}).then(() => location.reload());
+}
 function buyArtifact(artifactId) {
     if(!confirm('Купить этот предмет?')) return;
     fetch('/api/buy_artifact', {
