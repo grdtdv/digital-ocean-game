@@ -525,3 +525,54 @@ function submitTaskAnswer() {
         }
     });
 }
+
+/* ==========================================
+   7. РЕДАКТОР УЧЕНИКОВ (УЧИТЕЛЬ)
+   ========================================== */
+
+function confirmAddStudent() {
+    const name = document.getElementById('newStudentName').value.trim();
+    const password = document.getElementById('newStudentPassword').value.trim();
+    const gender = document.getElementById('newStudentGender').value;
+
+    if (!name || !password) {
+        alert('Введите имя и пароль!');
+        return;
+    }
+
+    fetch('/api/add_student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, password: password, gender: gender })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Ученик успешно зарегистрирован!');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    });
+}
+
+function deleteStudent(id, name) {
+    if (!confirm(`ВНИМАНИЕ! Вы точно хотите удалить ученика "${name}"?\n\nВсе его баллы, артефакты и прогресс будут стерты НАВСЕГДА!`)) {
+        return;
+    }
+
+    fetch('/api/delete_student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Ученик удален.');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    });
+}

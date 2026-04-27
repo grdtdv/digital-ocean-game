@@ -82,27 +82,45 @@
             </div>
 
             <!-- === ВКЛАДКА 2: СТАТИСТИКА -> УЧЕНИКИ (Красивые карточки) === -->
+         <!-- === ВКЛАДКА 2: СТАТИСТИКА -> УЧЕНИКИ === -->
             <div id="sec-stats_students" class="teacher-section">
                 <h2 style="color: #4a2e15; margin-bottom: 20px; text-align: center;">Статистика учеников</h2>
                 
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <button class="btn" style="background: #2c8c7c; color: white; font-size: 18px; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="openModal('addStudentModal')">
+                        ➕ Зарегистрировать ученика
+                    </button>
+                </div>
+                
+                <!-- НАЧАЛО СЕТКИ -->
                 <div class="students-grid">
+                    
                     {% for student in students %}
+                    <!-- Карточка одного ученика -->
                     <div class="student-card {{ 'girl' if student.avatar_type == 'girl' else 'boy' }}">
                         <div class="student-card-avatar">
                             <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                         </div>
                         <h3>{{ student.full_name }}</h3>
-                        <!-- Строгая статистика без кнопок -->
+                        
                         <p>Куплено артефактов: {{ student.artifacts_count }}</p>
                         <p>Собрано животных: {{ student.level }}</p>
                         <p>Доступно очков: {{ student.current_points }}</p>
                         <p>Всего потрачено: {{ student.total_spent }}</p>
-                    </div>
+                        
+                        <!-- НОВАЯ КНОПКА УДАЛЕНИЯ -->
+                        <button class="btn btn--sm" style="margin-top: 15px; background: #c0152f; color: white; border: none; width: 100%; font-weight: bold;" onclick="deleteStudent({{ student.id }}, '{{ student.full_name }}')">
+                            Удалить аккаунт
+                        </button>
+                    </div> <!-- Конец карточки ученика -->
+                    
                     {% else %}
                     <p style="font-size: 20px; text-align: center; width: 100%;">Учеников пока нет.</p>
                     {% endfor %}
-                </div>
+                    
+                </div> <!-- КОНЕЦ СЕТКИ -->
             </div>
+            <!-- === КОНЕЦ ВКЛАДКИ 2 === -->
 
             <!-- === ВКЛАДКА 3: СТАТИСТИКА -> ПОСЛЕДНИЕ ДЕЙСТВИЯ === -->
             <div id="sec-actions" class="teacher-section">
@@ -494,6 +512,35 @@
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button class="btn btn--primary" style="background: #2c8c7c; border: none;" onclick="confirmAddTask()">Создать</button>
             <button class="btn btn--secondary" onclick="closeModal('addTaskModal')">Отмена</button>
+        </div>
+    </div>
+</div>
+<!-- Окно: Регистрация ученика -->
+<div id="addStudentModal" class="modal">
+    <div class="modal-content" style="max-width: 400px; background: #fdf6e3; border: 3px solid #eecf97;">
+        <h2 class="mb-24" style="color: #4a2e15;">Новый ученик</h2>
+            
+        <div class="form-group">
+            <label class="form-label" style="color: #4a2e15;">Имя (Логин)</label>
+            <input type="text" id="newStudentName" class="form-control" placeholder="Например: Петя">
+        </div>
+            
+        <div class="form-group" style="margin-top: 15px;">
+            <label class="form-label" style="color: #4a2e15;">Пароль</label>
+            <input type="text" id="newStudentPassword" class="form-control" placeholder="Например: 1234">
+        </div>
+            
+        <div class="form-group" style="margin-top: 15px;">
+            <label class="form-label" style="color: #4a2e15;">Пол (для цвета карточки)</label>
+            <select id="newStudentGender" class="form-control">
+                <option value="boy">Мальчик 👦</option>
+                <option value="girl">Девочка 👧</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 25px;">
+            <button class="btn btn--primary" style="background: #2c8c7c; border: none;" onclick="confirmAddStudent()">Зарегистрировать</button>
+            <button class="btn btn--secondary" onclick="closeModal('addStudentModal')">Отмена</button>
         </div>
     </div>
 </div>

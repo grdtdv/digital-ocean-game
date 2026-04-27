@@ -3,6 +3,7 @@ import mysql.connector
 import os
 import random
 from datetime import datetime, timedelta
+
 app = Flask(__name__)
 app.secret_key = 'super_secret'
 
@@ -37,33 +38,21 @@ def login():
                 'SELECT * FROM users WHERE username = %s AND password = %s AND role="teacher"',
                 (username, password))
             user = cursor.fetchone()
+            # Сценарий 2: Входит Ученик
         else:
+            password = request.form.get('password')
             # Ищем ученика по имени
             cursor.execute('SELECT * FROM users WHERE username = %s AND role="student"', (username,))
             existing_student = cursor.fetchone()
 
-            if not existing_student:
-                # РЕГИСТРАЦИЯ: ученика нет, создаем нового с введенным паролем
-                gender = request.form.get('gender', 'boy')
-                cursor.execute('''
-                    INSERT INTO users (username, password, role, avatar_type, full_name) 
-                    VALUES (%s, %s, "student", %s, %s)
-                ''', (username, password, gender, username))
-
-                user_id = cursor.lastrowid
-                cursor.execute('INSERT INTO student_progress (user_id) VALUES (%s)', (user_id,))
-                cursor.execute('INSERT INTO user_shop_state (user_id) VALUES (%s)', (user_id,))
-                conn.commit()
-
-                # Получаем только что созданного пользователя
-                cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
-                user = cursor.fetchone()
-            else:
-                # ВХОД: ученик есть, проверяем совпадает ли пароль
+            # ТЕПЕРЬ МЫ НИКОГО НЕ СОЗДАЕМ! Просто проверяем пароль.
+            if existing_student:
                 if existing_student['password'] == password:
                     user = existing_student
                 else:
-                    msg = 'Неверный пароль!'  # Пароль не подошел, user остается None
+                    msg = 'Неверный пароль!'
+            else:
+                msg = 'Такого ученика нет! Попроси учителя создать тебе аккаунт.'
 
         cursor.close()
         conn.close()
@@ -155,6 +144,8 @@ def refresh_user_shop(user_id, cursor):
     cursor.execute(
         'UPDATE user_shop_state SET next_refresh = %s, pity_counter = %s WHERE user_id = %s',
         (next_refresh, new_pity, user_id))
+
+
 # --- КАБИНЕТ УЧЕНИКА ---
 # --- КАБИНЕТ УЧЕНИКА ---
 @app.route('/student')
@@ -958,6 +949,78 @@ def force_refresh():
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
+
+
+# --- API: УПРАВЛЕНИЕ УЧЕНИКАМИ (РЕДАКТОР) ---
+@app.route('/api/add_student', methods=['POST'])
+def add_student():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    name = request.json.get('name', '').strip()
+    password = request.json.get('password', '').strip()
+    gender = request.json.get('gender', 'boy')
+
+    if not name or not password:
+        return jsonify({'status': 'error', 'message': 'Имя и пароль обязательны!'})
+
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Проверяем, нет ли уже такого имени
+        cursor.execute('SELECT id FROM users WHERE username = %s AND role="student"', (name,))
+        if cursor.fetchone():
+            return jsonify({'status': 'error', 'message': 'Ученик с таким именем уже существует!'})
+
+        # 1. Создаем пользователя
+        cursor.execute(
+            'INSERT INTO users (username, password, role, avatar_type, full_name) VALUES (%s, %s, "student", %s, %s)',
+            (name, password, gender, name))
+        user_id = cursor.lastrowid
+
+        # 2. Выдаем ему кошелек и магазин
+        cursor.execute('INSERT INTO student_progress (user_id) VALUES (%s)', (user_id,))
+        cursor.execute('INSERT INTO user_shop_state (user_id) VALUES (%s)', (user_id,))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/delete_student', methods=['POST'])
+def delete_student():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    student_id = request.json.get('student_id')
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Вручную удаляем все хвосты ученика, чтобы база данных не ругалась на связи
+        cursor.execute('DELETE FROM inventory WHERE user_id = %s', (student_id,))
+        cursor.execute('DELETE FROM transactions WHERE student_id = %s', (student_id,))
+        cursor.execute('DELETE FROM completed_tasks WHERE student_id = %s', (student_id,))
+        cursor.execute('DELETE FROM set_requests WHERE student_id = %s', (student_id,))
+        cursor.execute('DELETE FROM student_progress WHERE user_id = %s', (student_id,))
+        cursor.execute('DELETE FROM user_shop_state WHERE user_id = %s', (student_id,))
+        cursor.execute('DELETE FROM user_shop_slots WHERE user_id = %s', (student_id,))
+
+        # Удаляем самого ученика
+        cursor.execute('DELETE FROM users WHERE id = %s AND role="student"', (student_id,))
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
 @app.route('/logout')
 def logout():
     session.clear()
