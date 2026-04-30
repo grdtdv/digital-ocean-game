@@ -576,3 +576,71 @@ function deleteStudent(id, name) {
         }
     });
 }
+/* ==========================================
+   8. РЕДАКТОР АРТЕФАКТОВ (УЧИТЕЛЬ)
+   ========================================== */
+function openAddArtifactModal() {
+    document.getElementById('newArtName').value = '';
+    document.getElementById('newArtSet').value = '';
+    document.getElementById('newArtPrice').value = '50';
+    document.getElementById('newArtLevel').value = '1';
+    openModal('addArtifactModal');
+}
+
+function confirmAddArtifact() {
+    const fd = new FormData();
+    fd.append('name', document.getElementById('newArtName').value);
+    fd.append('set_name', document.getElementById('newArtSet').value || 'Без сета');
+    fd.append('price', document.getElementById('newArtPrice').value);
+    fd.append('min_level', document.getElementById('newArtLevel').value);
+    fd.append('rarity', document.getElementById('newArtRarity').value);
+    
+    const img = document.getElementById('newArtImage');
+    if (img.files.length > 0) fd.append('image', img.files[0]);
+
+    if (!fd.get('name')) return alert('Введите название!');
+
+    fetch('/api/add_artifact', { method: 'POST', body: fd })
+    .then(res => res.json()).then(data => {
+        if(data.status === 'success') location.reload(); else alert(data.message);
+    });
+}
+
+function openEditArtifactModal(id, name, setName, rarity, price, minLevel) {
+    document.getElementById('editArtId').value = id;
+    document.getElementById('editArtName').value = name;
+    document.getElementById('editArtSet').value = setName;
+    document.getElementById('editArtRarity').value = rarity;
+    document.getElementById('editArtPrice').value = price;
+    document.getElementById('editArtLevel').value = minLevel;
+    openModal('editArtifactModal');
+}
+
+function confirmEditArtifact() {
+    const fd = new FormData();
+    fd.append('id', document.getElementById('editArtId').value);
+    fd.append('name', document.getElementById('editArtName').value);
+    fd.append('set_name', document.getElementById('editArtSet').value);
+    fd.append('price', document.getElementById('editArtPrice').value);
+    fd.append('min_level', document.getElementById('editArtLevel').value);
+    fd.append('rarity', document.getElementById('editArtRarity').value);
+    
+    const img = document.getElementById('editArtImage');
+    if (img.files.length > 0) fd.append('image', img.files[0]);
+
+    fetch('/api/edit_artifact', { method: 'POST', body: fd })
+    .then(res => res.json()).then(data => {
+        if(data.status === 'success') location.reload(); else alert(data.message);
+    });
+}
+
+function deleteArtifact(id) {
+    if(!confirm("Удалить этот артефакт? Он исчезнет из инвентаря учеников и витрин магазина!")) return;
+    fetch('/api/delete_artifact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+    }).then(res => res.json()).then(data => {
+        if(data.status === 'success') location.reload(); else alert(data.message);
+    });
+}

@@ -147,7 +147,7 @@ def refresh_user_shop(user_id, cursor):
 
 
 # --- КАБИНЕТ УЧЕНИКА ---
-# --- КАБИНЕТ УЧЕНИКА ---
+
 @app.route('/student')
 def student_dashboard():
     if 'user_id' not in session or session['role'] != 'student':
@@ -314,6 +314,10 @@ def teacher_dashboard():
     # Грузим все задания для админки
     cursor.execute('SELECT * FROM extra_tasks ORDER BY created_at DESC')
     all_tasks = cursor.fetchall()
+    # 6. АРТЕФАКТЫ (ДЛЯ РЕДАКТОРА)
+    cursor.execute('SELECT * FROM artifacts ORDER BY set_name, min_level')
+    all_artifacts = cursor.fetchall()
+
     conn.close()
     return render_template('teacher.html',
                            students=students,
@@ -321,7 +325,8 @@ def teacher_dashboard():
                            grading_events=grading_events,
                            recent_actions=recent_actions,
                            monsters=all_monsters,
-                           tasks=all_tasks)
+                           tasks=all_tasks,
+                           all_artifacts=all_artifacts)
 
 
 # --- API ---
@@ -1012,6 +1017,102 @@ def delete_student():
         # Удаляем самого ученика
         cursor.execute('DELETE FROM users WHERE id = %s AND role="student"', (student_id,))
 
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+# ==========================================
+# --- API: РЕДАКТОР АРТЕФАКТОВ ---
+# ==========================================
+
+@app.route('/api/add_artifact', methods=['POST'])
+def add_artifact():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    name = request.form.get('name')
+    set_name = request.form.get('set_name', 'Без сета')
+    rarity = request.form.get('rarity', 'обычный')
+    price = int(request.form.get('price', 50))
+    min_level = int(request.form.get('min_level', 1))
+    image_file = request.files.get('image')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            INSERT INTO artifacts (name, price, min_level, set_name, rarity) 
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (name, price, min_level, set_name, rarity))
+        art_id = cursor.lastrowid
+
+        # Сохраняем картинку под именем ID.png (например, 15.png)
+        if image_file and image_file.filename != '':
+            filepath = os.path.join('static', 'img', 'artifacts', f"{art_id}.png")
+            image_file.save(filepath)
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/edit_artifact', methods=['POST'])
+def edit_artifact():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+
+    art_id = request.form.get('id')
+    name = request.form.get('name')
+    set_name = request.form.get('set_name')
+    rarity = request.form.get('rarity')
+    price = int(request.form.get('price'))
+    min_level = int(request.form.get('min_level'))
+    image_file = request.files.get('image')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            UPDATE artifacts 
+            SET name=%s, set_name=%s, rarity=%s, price=%s, min_level=%s 
+            WHERE id=%s
+        ''', (name, set_name, rarity, price, min_level, art_id))
+
+        if image_file and image_file.filename != '':
+            filepath = os.path.join('static', 'img', 'artifacts', f"{art_id}.png")
+            image_file.save(filepath)
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/delete_artifact', methods=['POST'])
+def delete_artifact():
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
+    art_id = request.json.get('id')
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Сначала удаляем артефакт из витрин магазина и инвентарей учеников, чтобы база не ругалась
+        cursor.execute('DELETE FROM user_shop_slots WHERE artifact_id = %s', (art_id,))
+        cursor.execute('DELETE FROM inventory WHERE artifact_id = %s', (art_id,))
+        # Удаляем сам артефакт
+        cursor.execute('DELETE FROM artifacts WHERE id = %s', (art_id,))
         conn.commit()
         return jsonify({'status': 'success'})
     except Exception as e:

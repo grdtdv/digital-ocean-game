@@ -28,7 +28,9 @@
                         <!-- Вкладка 4 -->
                         <li onclick="showSection('monster')">- Данные и Управление</li>
                     </ul>
+                
                 </li>
+                <li onclick="showSection('artifacts')" style="margin-top: 15px;">• Артефакты и Сеты</li>
                 <li onclick="showSection('tasks')">• Доп. задания</li>
             </ul>
                 
@@ -244,8 +246,50 @@
         </tbody>
     </table>
 </div>
-        </div>
+        <!-- === ВКЛАДКА 6: АРТЕФАКТЫ === -->
+            <div id="sec-artifacts" class="teacher-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: #4a2e15;">Управление артефактами</h2>
+                    <button class="btn" style="background: #2c8c7c; color: white; border: 2px solid #fff;" onclick="openAddArtifactModal()">
+                        ➕ Добавить артефакт
+                    </button>
+                </div>
+
+                <table class="paint-table" style="font-size: 16px;">
+                    <thead>
+                        <tr>
+                            <th>Арт</th>
+                            <th>Название</th>
+                            <th>Сет</th>
+                            <th>Редкость</th>
+                            <th>Цена / Ур.</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in all_artifacts %}
+                        <tr>
+                            <td><img src="{{ url_for('static', filename='img/artifacts/' ~ a.id ~ '.png') }}" style="width: 40px; height: 40px; object-fit: contain;"></td>
+                            <td><strong>{{ a.name }}</strong></td>
+                            <td>{{ a.set_name }}</td>
+                            <td><b style="color: {% if a.rarity == 'эпический' %}#b300ff{% elif a.rarity == 'особый' %}#00d5ff{% else %}gray{% endif %};">{{ a.rarity }}</b></td>
+                            <td>{{ a.price }} 🐚<br>Ур. {{ a.min_level }}</td>
+                            <td>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    <button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="openEditArtifactModal({{ a.id }}, '{{ a.name }}', '{{ a.set_name }}', '{{ a.rarity }}', {{ a.price }}, {{ a.min_level }})">Изменить</button>
+                                    <button class="btn btn--sm" style="background: #c0152f; color: white;" onclick="deleteArtifact({{ a.id }})">Удалить</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="text-align: center;">Артефактов пока нет.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
     </div>
+    </div>
+
         <div id="addPointsModal" class="modal">
         <div class="modal-content">
             <h2 class="mb-24">Начислить баллы</h2>
@@ -544,6 +588,58 @@
         </div>
     </div>
 </div>
+<!-- Окно: Добавить Артефакт -->
+    <div id="addArtifactModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; background: #fdf6e3; border: 3px solid #eecf97;">
+            <h2 class="mb-24" style="color: #4a2e15;">Новый артефакт</h2>
+            <div class="form-group"><label class="form-label">Название</label><input type="text" id="newArtName" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Название сета (группа)</label><input type="text" id="newArtSet" class="form-control" placeholder="Например: Набор воина"></div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <div class="form-group" style="flex: 1;"><label class="form-label">Цена (баллы)</label><input type="number" id="newArtPrice" class="form-control" value="50"></div>
+                <div class="form-group" style="flex: 1;"><label class="form-label">Мин. уровень</label><input type="number" id="newArtLevel" class="form-control" value="1"></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;"><label class="form-label">Редкость</label>
+                <select id="newArtRarity" class="form-control">
+                    <option value="обычный">Обычный (50% шанс)</option>
+                    <option value="особый">Особый (30% шанс)</option>
+                    <option value="эпический">Эпический (20% шанс)</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-top: 15px;"><label class="form-label">Картинка (PNG)</label><input type="file" id="newArtImage" class="form-control" accept="image/png" style="background: white;"></div>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn--primary" style="background: #2c8c7c; border: none;" onclick="confirmAddArtifact()">Создать</button>
+                <button class="btn btn--secondary" onclick="closeModal('addArtifactModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Окно: Изменить Артефакт -->
+    <div id="editArtifactModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; background: #fdf6e3; border: 3px solid #eecf97;">
+            <h2 class="mb-24" style="color: #4a2e15;">Изменить артефакт</h2>
+            <input type="hidden" id="editArtId">
+            <div class="form-group"><label class="form-label">Название</label><input type="text" id="editArtName" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Название сета</label><input type="text" id="editArtSet" class="form-control"></div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <div class="form-group" style="flex: 1;"><label class="form-label">Цена</label><input type="number" id="editArtPrice" class="form-control"></div>
+                <div class="form-group" style="flex: 1;"><label class="form-label">Мин. уровень</label><input type="number" id="editArtLevel" class="form-control"></div>
+            </div>
+            <div class="form-group" style="margin-top: 15px;"><label class="form-label">Редкость</label>
+                <select id="editArtRarity" class="form-control">
+                    <option value="обычный">Обычный</option>
+                    <option value="особый">Особый</option>
+                    <option value="эпический">Эпический</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-top: 15px;"><label class="form-label">Заменить картинку (необязательно)</label><input type="file" id="editArtImage" class="form-control" accept="image/png" style="background: white;"></div>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn--primary" style="background: #ff9800; border: none;" onclick="confirmEditArtifact()">Сохранить</button>
+                <button class="btn btn--secondary" onclick="closeModal('editArtifactModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
     <script>
         // Функция переключения вкладок
         function showSection(sectionId) {
