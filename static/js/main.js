@@ -345,25 +345,27 @@ function openAddMonsterModal() {
 function confirmAddMonster() {
     const name = document.getElementById('newMonsterName').value.trim();
     const hp = parseInt(document.getElementById('newMonsterHp').value);
+    
+    // БЕРЕМ НАГРАДУ ИЗ ВЫПАДАЮЩЕГО СПИСКА!
+    const rewardSelect = document.getElementById('newMonsterReward');
+    const reward = rewardSelect ? rewardSelect.value : 'нет';
+    
     const imageInput = document.getElementById('newMonsterImage');
     
     if (!name) { alert("Введите имя босса!"); return; }
     if (isNaN(hp) || hp <= 0) { alert("ХП должно быть больше нуля!"); return; }
     
-    // Создаем объект FormData для отправки файлов
     const formData = new FormData();
     formData.append('name', name);
     formData.append('max_hp', hp);
+    formData.append('reward_rarity', reward); // ОТПРАВЛЯЕМ В ПИТОН
     
-    // Если картинка выбрана - прикрепляем её
     if (imageInput && imageInput.files.length > 0) {
         formData.append('image', imageInput.files[0]);
     }
     
-    // Отправляем на сервер
     fetch('/api/add_monster', {
         method: 'POST',
-        // ВНИМАНИЕ: Здесь НЕТ строчки headers! Браузер сам подставит нужные заголовки для файла.
         body: formData
     })
     .then(res => res.json())
@@ -374,10 +376,6 @@ function confirmAddMonster() {
         } else {
             alert('Ошибка сервера: ' + data.message);
         }
-    })
-    .catch(error => {
-        console.error('Ошибка:', error);
-        alert('Не удалось связаться с сервером.');
     });
 }
 // --- УПРАВЛЕНИЕ БОССАМИ (АКТИВАЦИЯ, РЕДАКТИРОВАНИЕ, УДАЛЕНИЕ) ---
@@ -408,13 +406,14 @@ function deleteMonster(id) {
     });
 }
 
-function openEditMonsterModal(id, name, quarter, maxHp, currentHp) {
+function openEditMonsterModal(id, name, quarter, maxHp, currentHp, reward) {
     // Заполняем форму текущими данными босса
     document.getElementById('editMonsterId').value = id;
     document.getElementById('editMonsterName').value = name;
     document.getElementById('editMonsterQuarter').value = quarter;
     document.getElementById('editMonsterMaxHp').value = maxHp;
     document.getElementById('editMonsterCurrentHp').value = currentHp;
+    document.getElementById('editMonsterReward').value = reward;
     
     openModal('editMonsterModal');
 }
@@ -425,19 +424,24 @@ function confirmEditMonster() {
     const quarter = parseInt(document.getElementById('editMonsterQuarter').value);
     const maxHp = parseInt(document.getElementById('editMonsterMaxHp').value);
     const currentHp = parseInt(document.getElementById('editMonsterCurrentHp').value);
+    
+    // БЕРЕМ НАГРАДУ ИЗ ВЫПАДАЮЩЕГО СПИСКА!
+    const rewardSelect = document.getElementById('editMonsterReward');
+    const reward = rewardSelect ? rewardSelect.value : 'нет'; 
+    
     const imageInput = document.getElementById('editMonsterImage');
 
     if (!name) { alert("Введите имя!"); return; }
     
-    // Формируем пакет данных (с файлом, если он есть)
     const formData = new FormData();
     formData.append('id', id);
     formData.append('name', name);
     formData.append('quarter', quarter);
     formData.append('max_hp', maxHp);
     formData.append('current_hp', currentHp);
+    formData.append('reward_rarity', reward); // ОТПРАВЛЯЕМ В ПИТОН
     
-    if (imageInput.files.length > 0) {
+    if (imageInput && imageInput.files.length > 0) {
         formData.append('image', imageInput.files[0]);
     }
 
@@ -606,15 +610,25 @@ function confirmAddArtifact() {
     });
 }
 
-function openEditArtifactModal(id, name, setName, rarity, price, minLevel) {
-    document.getElementById('editArtId').value = id;
-    document.getElementById('editArtName').value = name;
-    document.getElementById('editArtSet').value = setName;
-    document.getElementById('editArtRarity').value = rarity;
-    document.getElementById('editArtPrice').value = price;
-    document.getElementById('editArtLevel').value = minLevel;
-    openModal('editArtifactModal');
+// --- 1. ОТКРЫТИЕ ОКНА РЕДАКТИРОВАНИЯ ---
+function openEditMonsterModal(id, name, quarter, maxHp, currentHp, reward) {
+    document.getElementById('editMonsterId').value = id;
+    document.getElementById('editMonsterName').value = name;
+    document.getElementById('editMonsterQuarter').value = quarter;
+    document.getElementById('editMonsterMaxHp').value = maxHp;
+    document.getElementById('editMonsterCurrentHp').value = currentHp;
+    
+    if (!reward || reward === 'None' || reward === '') {
+        reward = 'нет';
+    }
+    const rewardSelect = document.getElementById('editMonsterReward');
+    if (rewardSelect) {
+        rewardSelect.value = reward; 
+    }
+    
+    openModal('editMonsterModal');
 }
+
 
 function confirmEditArtifact() {
     const fd = new FormData();

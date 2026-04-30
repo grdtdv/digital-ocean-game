@@ -190,7 +190,11 @@
                                     {% if not m.is_active %}
                                         <button class="btn btn--sm" style="background: #2c8c7c; color: white;" onclick="activateMonster({{ m.id }})">Запустить</button>
                                     {% endif %}
-                                    <button class="btn btn--sm" style="background: #ff9800; color: white;" onclick="openEditMonsterModal({{ m.id }}, '{{ m.name }}', {{ m.quarter }}, {{ m.max_hp }}, {{ m.current_hp }})">Изменить</button>
+                                    <button class="btn btn--sm" style="background: #ff9800; color: white;" 
+        onclick="openEditMonsterModal({{ m.id }}, '{{ m.name }}', {{ m.quarter }}, {{ m.max_hp }}, {{ m.current_hp }}, '{{ m.reward_rarity }}')">
+    Изменить
+</button>
+</button>
                                     <button class="btn btn--sm" style="background: #c0152f; color: white;" onclick="deleteMonster({{ m.id }})">Удалить</button>
                                 </div>
                             </td>
@@ -489,7 +493,16 @@
                 <input type="number" id="newMonsterHp" class="form-control" min="1" value="300">
                 <p style="font-size: 12px; color: gray; margin-top: 5px;">Босс автоматически встанет в конец очереди.</p>
             </div>
-
+            <!-- Поле для выбора награды за босса -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">Лут с босса (выпадет всем ученикам)</label>
+                <select id="newMonsterReward" class="form-control"> <!-- В модалке Edit измени ID на editMonsterReward -->
+                    <option value="нет">Без лута</option>
+                    <option value="обычный">Случайный обычный артефакт</option>
+                    <option value="особый">Случайный особый артефакт</option>
+                    <option value="эпический">Случайный эпический артефакт</option>
+                </select>
+            </div>
             <!-- === НОВОЕ ПОЛЕ ДЛЯ КАРТИНКИ === -->
             <div class="form-group" style="margin-top: 15px;">
                 <label class="form-label">Картинка босса (необязательно)</label>
@@ -504,6 +517,7 @@
             </div>
         </div>
     </div>
+    <!-- Окно: Редактировать босса -->
     <!-- Окно: Редактировать босса -->
     <div id="editMonsterModal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
@@ -530,7 +544,17 @@
             <div class="form-group" style="margin-top: 15px;">
                 <label class="form-label">Порядковый номер (Этап)</label>
                 <input type="number" id="editMonsterQuarter" class="form-control" min="1">
-                <p style="font-size: 12px; color: gray;">Теперь "четверть" - это просто номер этапа.</p>
+            </div>
+
+            <!-- ВОТ ЭТО ПОЛЕ, ИЗ-ЗА КОТОРОГО БЫЛА ОШИБКА -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">Лут с босса (выпадет всем ученикам)</label>
+                <select id="editMonsterReward" class="form-control">
+                    <option value="нет">Без лута</option>
+                    <option value="обычный">Случайный обычный артефакт</option>
+                    <option value="особый">Случайный особый артефакт</option>
+                    <option value="эпический">Случайный эпический артефакт</option>
+                </select>
             </div>
 
             <div class="form-group" style="margin-top: 15px;">
@@ -647,6 +671,6 @@
             document.getElementById('sec-' + sectionId).classList.add('active');
         }
     </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=999"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=1001"></script>
 </body>
 </html>

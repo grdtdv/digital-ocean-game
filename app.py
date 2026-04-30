@@ -484,36 +484,57 @@ def monster_attack():
         conn.close()
 
 
-# --- API: ПЕРЕКЛЮЧЕНИЕ МОНСТРА НА СЛЕДУЮЩЕГО ---
+# --- API: ПЕРЕКЛЮЧЕНИЕ МОНСТРА (И ВЫДАЧА НАГРАД) ---
 @app.route('/api/complete_monster', methods=['POST'])
 def complete_monster():
-    if 'user_id' not in session or session['role'] != 'teacher':
-        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
+    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
+        {'status': 'error'}), 403
 
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
     try:
-        # Находим текущего монстра
-        cursor.execute('SELECT id, quarter FROM monsters WHERE is_active = TRUE LIMIT 1')
+        # Находим поверженного монстра
+        cursor.execute('SELECT * FROM monsters WHERE is_active = TRUE LIMIT 1')
         active_monster = cursor.fetchone()
 
         if active_monster:
-            # Отключаем текущего
+            # === РАЗДАЧА НАГРАД ===
+            rarity = active_monster['reward_rarity']
+            if rarity != 'нет':
+                # Ищем все артефакты нужной редкости
+                cursor.execute('SELECT id, name FROM artifacts WHERE rarity = %s', (rarity,))
+                possible_arts = cursor.fetchall()
+
+                if possible_arts:
+                    # Находим всех учеников
+                    cursor.execute('SELECT id FROM users WHERE role = "student"')
+                    students = cursor.fetchall()
+
+                    # Каждому ученику даем случайный артефакт этой редкости
+                    for st in students:
+                        chosen_art = random.choice(possible_arts)
+                        cursor.execute(
+                            'INSERT INTO inventory (user_id, artifact_id) VALUES (%s, %s)',
+                            (st['id'], chosen_art['id']))
+                        # Пишем в историю
+                        cursor.execute(
+                            'INSERT INTO transactions (student_id, amount, reason) VALUES (%s, 0, %s)',
+                            (st['id'], f"Лут с босса: {chosen_art['name']}"))
+            # ======================
+
+            # Отключаем текущего босса
             cursor.execute('UPDATE monsters SET is_active = FALSE WHERE id = %s',
                            (active_monster['id'],))
-            # Ищем следующего (по четверти)
+
+            # Ищем следующего
             cursor.execute('SELECT id FROM monsters WHERE quarter > %s ORDER BY quarter ASC LIMIT 1',
                            (active_monster['quarter'],))
             next_monster = cursor.fetchone()
 
             if next_monster:
-                # Включаем следующего
                 cursor.execute('UPDATE monsters SET is_active = TRUE WHERE id = %s',
                                (next_monster['id'],))
-            else:
-                return jsonify({'status': 'error', 'message': 'Это был последний монстр в году!'})
         else:
-            # Если активных нет, включаем самого первого
             cursor.execute('UPDATE monsters SET is_active = TRUE ORDER BY quarter ASC LIMIT 1')
 
         conn.commit()
@@ -653,16 +674,16 @@ def attack_monster():
         conn.close()
 
 
-# --- API: ДОБАВИТЬ НОВОГО МОНСТРА (С КАРТИНКОЙ) ---
+# --- API: ДОБАВИТЬ НОВОГО МОНСТРА ---
 @app.route('/api/add_monster', methods=['POST'])
 def add_monster():
     if 'user_id' not in session or session['role'] != 'teacher':
         return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
 
-    # Теперь мы принимаем данные через request.form, а не request.json, т.к. передаем файл
     name = request.form.get('name')
     max_hp = int(request.form.get('max_hp', 0))
-    image_file = request.files.get('image')  # Достаем файл картинки
+    reward_rarity = request.form.get('reward_rarity', 'нет')  # <--- Берем лут
+    image_file = request.files.get('image')
 
     if not name or max_hp <= 0:
         return jsonify({'status': 'error', 'message': 'Некорректные данные'})
@@ -677,27 +698,20 @@ def add_monster():
         cursor.execute('SELECT id FROM monsters WHERE is_active = TRUE')
         is_active = False if cursor.fetchone() else True
 
-        # Сначала сохраняем монстра со стандартной картинкой
+        # Сохраняем монстра в базу ВМЕСТЕ с наградой
         cursor.execute('''
-            INSERT INTO monsters (name, quarter, max_hp, current_hp, is_active, image)
-            VALUES (%s, %s, %s, %s, %s, 'boss.png')
-        ''', (name, next_quarter, max_hp, max_hp, is_active))
+            INSERT INTO monsters (name, quarter, max_hp, current_hp, is_active, image, reward_rarity)
+            VALUES (%s, %s, %s, %s, %s, 'boss.png', %s)
+        ''', (name, next_quarter, max_hp, max_hp, is_active, reward_rarity))
 
-        monster_id = cursor.lastrowid  # Получаем ID только что созданного босса
+        monster_id = cursor.lastrowid
 
-        # Если учитель загрузил файл:
         if image_file and image_file.filename != '':
-            # Узнаем расширение файла (например, png или jpg)
             ext = image_file.filename.rsplit('.', 1)[
                 1].lower() if '.' in image_file.filename else 'png'
-            # Придумываем уникальное имя: например, boss_5.png
             new_filename = f"boss_{monster_id}.{ext}"
-
-            # Сохраняем файл физически в папку static/img
             filepath = os.path.join('static', 'img', new_filename)
             image_file.save(filepath)
-
-            # Обновляем запись в БД, вписывая туда новое имя файла
             cursor.execute('UPDATE monsters SET image = %s WHERE id = %s',
                            (new_filename, monster_id))
 
@@ -756,28 +770,27 @@ def delete_monster():
 # --- API: РЕДАКТИРОВАТЬ БОССА ---
 @app.route('/api/edit_monster', methods=['POST'])
 def edit_monster():
-    if 'user_id' not in session or session['role'] != 'teacher': return jsonify(
-        {'status': 'error'}), 403
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Нет доступа'}), 403
 
-    # Так как тут может быть картинка, используем form, а не json
     monster_id = request.form.get('id')
     name = request.form.get('name')
-    quarter = int(request.form.get('quarter', 1))  # Теперь это просто "Порядковый номер / Этап"
+    quarter = int(request.form.get('quarter', 1))
     max_hp = int(request.form.get('max_hp', 1))
     current_hp = int(request.form.get('current_hp', max_hp))
+    reward_rarity = request.form.get('reward_rarity', 'нет')  # <--- Берем лут
     image_file = request.files.get('image')
 
     conn = get_db()
     cursor = conn.cursor()
     try:
-        # Обновляем текстовые данные и ХП
+        # Обновляем текстовые данные, ХП И НАГРАДУ (reward_rarity)
         cursor.execute('''
             UPDATE monsters 
-            SET name=%s, quarter=%s, max_hp=%s, current_hp=%s 
+            SET name=%s, quarter=%s, max_hp=%s, current_hp=%s, reward_rarity=%s 
             WHERE id=%s
-        ''', (name, quarter, max_hp, current_hp, monster_id))
+        ''', (name, quarter, max_hp, current_hp, reward_rarity, monster_id))
 
-        # Если загрузили новую картинку - обновляем и её
         if image_file and image_file.filename != '':
             ext = image_file.filename.rsplit('.', 1)[
                 1].lower() if '.' in image_file.filename else 'png'
