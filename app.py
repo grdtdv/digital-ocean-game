@@ -258,6 +258,7 @@ def student_dashboard():
 
 
 # --- КАБИНЕТ УЧИТЕЛЯ ---
+
 @app.route('/teacher')
 def teacher_dashboard():
     if 'user_id' not in session or session['role'] != 'teacher': return redirect('/')
@@ -265,27 +266,24 @@ def teacher_dashboard():
     cursor = conn.cursor(dictionary=True)
 
     # 1. Ученики
-    # 1. Ученики (ПОЛНАЯ СТАТИСТИКА ДЛЯ КАРТОЧЕК)
     cursor.execute('''
-            SELECT 
-                u.id, 
-                u.full_name, 
-                u.avatar_type, 
-                sp.current_points, 
-                sp.level, 
-                sp.total_spent,
-                (SELECT COUNT(*) FROM inventory WHERE user_id = u.id) as artifacts_count
-            FROM users u 
-            JOIN student_progress sp ON u.id = sp.user_id 
-            WHERE u.role = "student"
-        ''')
+        SELECT u.id, u.full_name, u.avatar_type, sp.current_points, sp.level, sp.total_spent,
+               (SELECT COUNT(*) FROM inventory WHERE user_id = u.id) as artifacts_count
+        FROM users u 
+        JOIN student_progress sp ON u.id = sp.user_id 
+        WHERE u.role = "student"
+    ''')
     students = cursor.fetchall()
+
+    # --- НОВОЕ: ТЕКУЩИЙ УРОВЕНЬ КЛАССА ---
+    cursor.execute('SELECT MAX(level) as max_lvl FROM student_progress')
+    res_lvl = cursor.fetchone()
+    class_level = res_lvl['max_lvl'] if res_lvl and res_lvl['max_lvl'] else 1
 
     # 2. Заявки на сеты
     cursor.execute('''
         SELECT r.id, r.set_name, u.full_name 
-        FROM set_requests r 
-        JOIN users u ON r.student_id = u.id 
+        FROM set_requests r JOIN users u ON r.student_id = u.id 
         WHERE r.status = 'pending'
     ''')
     pending_requests = cursor.fetchall()
@@ -294,41 +292,69 @@ def teacher_dashboard():
     cursor.execute('SELECT * FROM grading_events')
     grading_events = cursor.fetchall()
 
-    # 4. ПОСЛЕДНИЕ ДЕЙСТВИЯ (НОВОЕ!)
+    # 4. ПОСЛЕДНИЕ ДЕЙСТВИЯ (НОВОЕ: Добавили выборку количества баллов - t.amount)
     cursor.execute('''
-        SELECT u.full_name as student_name, t.reason as action, t.created_at as date 
-        FROM transactions t 
-        JOIN users u ON t.student_id = u.id 
-        ORDER BY t.created_at DESC LIMIT 15
+        SELECT u.full_name as student_name, t.reason as action, t.amount, t.created_at as date 
+        FROM transactions t JOIN users u ON t.student_id = u.id 
+        ORDER BY t.created_at DESC LIMIT 30
     ''')
     recent_actions = cursor.fetchall()
-
-    # Форматируем дату, чтобы было красиво (например, 25.09.26)
     for act in recent_actions:
-        if act['date']:
-            act['date'] = act['date'].strftime('%d.%m.%y')
-        # 5. СПИСОК ВСЕХ МОНСТРОВ (ДЛЯ УПРАВЛЕНИЯ)
+        if act['date']: act['date'] = act['date'].strftime('%d.%m %H:%M')
 
+    # 5. Монстры
     cursor.execute('SELECT * FROM monsters ORDER BY quarter ASC')
     all_monsters = cursor.fetchall()
-    # Грузим все задания для админки
-    cursor.execute('SELECT * FROM extra_tasks ORDER BY created_at DESC')
-    all_tasks = cursor.fetchall()
-    # 6. АРТЕФАКТЫ (ДЛЯ РЕДАКТОРА)
+
+    # 6. Артефакты
     cursor.execute('SELECT * FROM artifacts ORDER BY set_name, min_level')
     all_artifacts = cursor.fetchall()
 
+    # 7. Доп. задания
+    cursor.execute('SELECT * FROM extra_tasks ORDER BY created_at DESC')
+    all_tasks = cursor.fetchall()
+
+    # --- НОВОЕ: СВОДНАЯ ВЕДОМОСТЬ (EXCEL) ---
+    # Собираем все начисления баллов и группируем их по датам
+    cursor.execute('''
+        SELECT student_id, amount, DATE_FORMAT(created_at, '%d.%m') as action_date
+        FROM transactions
+        WHERE amount > 0
+        ORDER BY created_at ASC
+    ''')
+    trans_pivot = cursor.fetchall()
+
+    # Получаем список уникальных дат (последние 10 дней, чтобы таблица не была бесконечной)
+    unique_dates = list(dict.fromkeys([t['action_date'] for t in trans_pivot]))[-10:]
+
+    # Создаем матрицу (таблицу) для HTML
+    pivot_table = {}
+    for t in trans_pivot:
+        sid = t['student_id']
+        d = t['action_date']
+        if d in unique_dates:
+            if sid not in pivot_table: pivot_table[sid] = {}
+            if d not in pivot_table[sid]: pivot_table[sid][d] = []
+            pivot_table[sid][d].append(str(t['amount']))
+
+    # Склеиваем, если в один день было несколько оценок (например: 50 + 100)
+    for sid in pivot_table:
+        for d in pivot_table[sid]:
+            pivot_table[sid][d] = " + ".join(pivot_table[sid][d])
+
     conn.close()
+
     return render_template('teacher.html',
                            students=students,
+                           class_level=class_level,  # Передаем уровень класса
                            pending_requests=pending_requests,
                            grading_events=grading_events,
                            recent_actions=recent_actions,
                            monsters=all_monsters,
                            tasks=all_tasks,
-                           all_artifacts=all_artifacts)
-
-
+                           all_artifacts=all_artifacts,
+                           unique_dates=unique_dates,  # Передаем колонки-даты
+                           pivot_table=pivot_table)  # Передаем ячейки
 # --- API ---
 @app.route('/api/buy_artifact', methods=['POST'])
 def buy_artifact():

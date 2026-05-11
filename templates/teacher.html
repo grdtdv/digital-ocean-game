@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Кабинет Учителя</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=99">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=100">
 </head>
 <body class="teacher-stage">
     
@@ -20,6 +20,7 @@
                         <li onclick="showSection('stats_students')">- Ученики</li>
                         <!-- Вкладка 3 -->
                         <li onclick="showSection('actions')">- Последние действия</li>
+                        <li onclick="showSection('excel')">- Сводная ведомость 📊</li>
                     </ul>
                 </li>
                 
@@ -139,7 +140,13 @@
                         {% for act in recent_actions %}
                         <tr>
                             <td><strong>{{ act.student_name }}</strong></td>
-                            <td>{{ act.action }}</td>
+                            <!-- НОВОЕ ОТОБРАЖЕНИЕ: Показываем плюс или минус баллы цветом -->
+                            <td>
+                                {{ act.action }}
+                                <b style="color: {% if act.amount > 0 %}#2c8c7c{% else %}#c0152f{% endif %}; margin-left: 10px;">
+                                    ({{ '+' if act.amount > 0 else '' }}{{ act.amount }})
+                                </b>
+                            </td>
                             <td><strong>{{ act.date }}</strong></td>
                         </tr>
                         {% else %}
@@ -148,11 +155,47 @@
                     </tbody>
                 </table>
             </div>
-
+            <!-- === ВКЛАДКА 2.5: СВОДНАЯ ВЕДОМОСТЬ (EXCEL) === -->
+            <div id="sec-excel" class="teacher-section">
+                <h2 style="color: #4a2e15; margin-bottom: 20px;">Сводная ведомость баллов (Авто-журнал)</h2>
+                
+                <div class="excel-container">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th>Ученик</th>
+                                <!-- Динамические колонки-даты (09.09, 15.09 и т.д.) -->
+                                {% for date in unique_dates %}
+                                <th>{{ date }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td class="excel-name-cell">{{ student.full_name }}</td>
+                                
+                                {% for date in unique_dates %}
+                                    {% set points = pivot_table.get(student.id, {}).get(date, '') %}
+                                    
+                                    {% if points %}
+                                        <td class="excel-value-cell">{{ points }}</td>
+                                    {% else %}
+                                        <td class="excel-empty-cell"></td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <!-- === ВКЛАДКА 4: МОНСТР И ЗАЯВКИ === -->
             <!-- === ВКЛАДКА 4: МОНСТР И ЗАЯВКИ === -->
             <div id="sec-monster" class="teacher-section">
-                
+                <div style="background: rgba(255,255,255,0.5); padding: 15px 25px; border-radius: 15px; border: 2px dashed #4a2e15; display: inline-block; margin-bottom: 20px;">
+                    <h3 style="color: #4a2e15; margin: 0;">Текущий уровень класса: <span style="background: #2c8c7c; color: white; padding: 5px 15px; border-radius: 10px; font-size: 28px; margin-left: 10px;">{{ class_level }}</span></h3>
+                </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="color: #4a2e15; margin: 0;">Управление боссами</h2>
                     <button class="btn" style="background: #e68161; color: white; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="openAddMonsterModal()">
